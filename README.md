@@ -1,6 +1,6 @@
 # HelloDev Conditions
 
-A modular condition system for Unity games. Supports event-driven and composite conditions for implementing prerequisites, triggers, and game logic.
+A modular condition system for Unity games. Supports event-driven conditions, composite conditions, and self-contained world state flags for implementing prerequisites, triggers, and game logic.
 
 ## Features
 
@@ -12,6 +12,16 @@ A modular condition system for Unity games. Supports event-driven and composite 
 - **Typed Conditions** - ConditionBool_SO, ConditionInt_SO, ConditionFloat_SO, ConditionString_SO
 - **ComparisonType** - Equals, NotEquals, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual
 - **HasBeenEvaluated** - Check if an event-driven condition has been triggered
+
+### World State Flags (v1.2.0)
+
+Self-contained ScriptableObject flags for tracking persistent game state:
+
+- **WorldFlagBool_SO** - Boolean flags (met_king, chose_evil_path, dragon_defeated)
+- **WorldFlagInt_SO** - Integer flags with min/max (reputation, kill_count, gold_donated)
+- **WorldFlagModification** - Defines how to modify flags (Set, Add, Subtract)
+- **ConditionWorldFlagBool_SO** - Check boolean flag values
+- **ConditionWorldFlagInt_SO** - Check integer flags with comparisons (>=, <, ==, etc.)
 
 ## Installation
 
@@ -76,20 +86,6 @@ void OnConditionMet()
 }
 ```
 
-### Checking Cached Evaluation State
-
-```csharp
-// For event-driven conditions, Evaluate() returns the cached result
-if (triggerCondition is ConditionEventDriven_SO<int> intCondition)
-{
-    // Check if condition has ever been evaluated
-    if (intCondition.HasBeenEvaluated)
-    {
-        bool lastResult = intCondition.Evaluate();
-    }
-}
-```
-
 ### Composite Conditions
 
 Combine multiple conditions using AND/OR logic:
@@ -108,47 +104,78 @@ void Start()
 }
 ```
 
-### Creating Custom Condition Types
+### World State Flags
+
+World flags are self-contained ScriptableObjects that store persistent game state. Each flag stores its own value and fires events when changed.
+
+#### Creating World Flags
+
+```
+Assets > Create > HelloDev > World State > Bool Flag
+Assets > Create > HelloDev > World State > Int Flag
+```
+
+#### Using World Flags in Code
 
 ```csharp
-using HelloDev.Conditions;
-using HelloDev.Events;
-using UnityEngine;
+using HelloDev.Conditions.WorldFlags;
 
-[CreateAssetMenu(menuName = "HelloDev/Conditions/Custom Condition")]
-public class ConditionCustom_SO : ConditionEventDriven_SO<float>
+public class QuestGiver : MonoBehaviour
 {
-    [SerializeField] private GameEventFloat_SO gameEvent;
+    [SerializeField] private WorldFlagBool_SO metKingFlag;
+    [SerializeField] private WorldFlagInt_SO reputationFlag;
 
-    protected override void SubscribeToSpecificEvent()
+    public void OnMeetKing()
     {
-        if (gameEvent != null)
-            gameEvent.AddListener(OnEventTriggered);
+        metKingFlag.SetTrue();
     }
 
-    protected override void UnsubscribeFromSpecificEvent()
+    public void OnCompleteQuest()
     {
-        if (gameEvent != null)
-            gameEvent.RemoveListener(OnEventTriggered);
+        reputationFlag.Increment(10); // Add 10 to reputation
     }
 
-    protected override bool CompareValues(float eventValue, float targetValue, ComparisonType comparisonType)
+    void Start()
     {
-        return comparisonType switch
-        {
-            ComparisonType.Equals => Mathf.Approximately(eventValue, targetValue),
-            ComparisonType.GreaterThan => eventValue > targetValue,
-            // ... other comparisons
-            _ => false
-        };
-    }
-
-    protected override void DebugForceFulfillCondition()
-    {
-        if (gameEvent != null)
-            gameEvent.Raise(targetValue);
+        // Subscribe to flag changes
+        metKingFlag.OnBecameTrue.AddListener(OnMetKing);
+        reputationFlag.OnValueChanged.AddListener(OnReputationChanged);
     }
 }
+```
+
+#### World Flag Conditions
+
+Check world flag values in conditions:
+
+```csharp
+// ConditionWorldFlagBool_SO - checks if a boolean flag equals expected value
+// ConditionWorldFlagInt_SO - checks integer flag with comparison (>=, <, ==, etc.)
+
+// Use in quest start conditions, dialogue prerequisites, etc.
+[SerializeField] private ConditionWorldFlagBool_SO metKingCondition;
+[SerializeField] private ConditionWorldFlagInt_SO highReputationCondition;
+
+if (metKingCondition.Evaluate() && highReputationCondition.Evaluate())
+{
+    // Player has met the king AND has high reputation
+    UnlockSpecialQuest();
+}
+```
+
+#### World Flag Modifications
+
+Apply changes to world flags (used by quest system for branch consequences):
+
+```csharp
+using HelloDev.Conditions.WorldFlags;
+
+// Create modification in code
+var modification = WorldFlagModification.CreateBool(sparedMerchantFlag, true);
+modification.Apply();
+
+var repBoost = WorldFlagModification.CreateInt(reputationFlag, WorldFlagIntOperation.Add, 10);
+repBoost.Apply();
 ```
 
 ## API Reference
@@ -179,12 +206,62 @@ public class ConditionCustom_SO : ConditionEventDriven_SO<float>
 | `Operator` | And/Or logic for combining |
 | `Cleanup()` | Unsubscribe and clear state |
 
+### WorldFlagBool_SO
+| Member | Description |
+|--------|-------------|
+| `Value` | Current boolean value |
+| `DefaultValue` | Value when reset |
+| `SetValue(bool)` | Set the flag value |
+| `SetTrue()` | Set flag to true |
+| `SetFalse()` | Set flag to false |
+| `Toggle()` | Toggle the flag |
+| `ResetToDefault()` | Reset to default value |
+| `OnValueChanged` | Event fired when value changes |
+| `OnBecameTrue` | Event fired when flag becomes true |
+| `OnBecameFalse` | Event fired when flag becomes false |
+
+### WorldFlagInt_SO
+| Member | Description |
+|--------|-------------|
+| `Value` | Current integer value |
+| `DefaultValue` | Value when reset |
+| `MinValue` / `MaxValue` | Optional clamping bounds |
+| `SetValue(int)` | Set the flag value |
+| `Increment(int)` | Add to current value |
+| `Decrement(int)` | Subtract from current value |
+| `ResetToDefault()` | Reset to default value |
+| `OnValueChanged` | Event fired when value changes |
+
+### WorldFlagModification
+| Member | Description |
+|--------|-------------|
+| `IsBoolFlag` | True if modifying a boolean flag |
+| `BoolFlag` / `IntFlag` | Target flag reference |
+| `IntOperation` | Set, Add, or Subtract |
+| `Apply()` | Execute the modification |
+| `CreateBool()` | Factory for boolean modification |
+| `CreateInt()` | Factory for integer modification |
+
 ## Dependencies
 
 - com.hellodev.utils (1.1.0+)
 - com.hellodev.events (1.1.0+)
 
 ## Changelog
+
+### v1.2.0 (2025-12-28)
+**World State Flags:**
+- Added `WorldFlagBase_SO` abstract base class for world flags
+- Added `WorldFlagBool_SO` for boolean state tracking
+- Added `WorldFlagInt_SO` for integer state tracking with min/max bounds
+- Added `WorldFlagModification` for applying flag changes
+- Added `ConditionWorldFlagBool_SO` for checking boolean flags
+- Added `ConditionWorldFlagInt_SO` for checking integer flags with comparisons
+
+**Design:**
+- Self-contained ScriptableObject approach (not interface-based)
+- Each flag stores its own value and fires events when changed
+- Supports quest system integration via WorldFlagModification
 
 ### v1.1.0 (2025-12-21)
 **Bug Fixes:**
@@ -193,19 +270,8 @@ public class ConditionCustom_SO : ConditionEventDriven_SO<float>
 
 **New Features:**
 - CompositeCondition_SO now implements IConditionEventDriven
-- ConditionEventDriven_SO caches last evaluation result (Evaluate() returns cached value)
-- Added `HasBeenEvaluated` property to check if condition was triggered
-
-**Robustness:**
-- Added null checks in all DebugForceFulfillCondition methods
-- Proper state reset in OnScriptableObjectReset
-
-**Documentation:**
-- Added XML documentation to all interfaces, classes, and methods
-
-**Package:**
-- Updated Unity version to 6000.3
-- Updated dependencies to 1.1.0
+- ConditionEventDriven_SO caches last evaluation result
+- Added `HasBeenEvaluated` property
 
 ### v1.0.0
 - Initial release
