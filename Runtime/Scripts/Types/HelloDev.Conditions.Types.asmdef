@@ -4,7 +4,8 @@
     "references": [
         "HelloDev.Conditions",
         "HelloDev.Events",
-        "HelloDev.Utils"
+        "HelloDev.Utils",
+        "HelloDev.Singletons"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,6 +1,4 @@
-using System;
 using UnityEngine;
-using UnityEngine.Events;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -8,8 +6,8 @@ using Sirenix.OdinInspector;
 namespace HelloDev.Conditions.WorldFlags
 {
     /// <summary>
-    /// A self-contained boolean world state flag.
-    /// Stores a true/false value and fires events when changed.
+    /// Immutable configuration for a boolean world flag.
+    /// Use WorldFlagManager (via WorldFlagService_SO) to get the runtime instance for mutable state.
     ///
     /// Example uses:
     /// - Quest branch decisions ("spared_the_merchant", "joined_thieves_guild")
@@ -29,44 +27,17 @@ namespace HelloDev.Conditions.WorldFlags
         [Tooltip("The default value when the flag is reset.")]
         private bool defaultValue = false;
 
-#if ODIN_INSPECTOR
-        [BoxGroup("Value")]
-        [PropertyOrder(11)]
-        [ReadOnly]
-        [ShowInInspector]
+#if ODIN_INSPECTOR && UNITY_EDITOR
+        [BoxGroup("Debug Service")]
+        [PropertyOrder(99)]
+        [Tooltip("Reference for debug buttons only. Not required for normal operation.")]
 #endif
-        private bool _currentValue;
-
-        #endregion
-
-        #region Events
-
-        /// <summary>
-        /// Fired when the flag value changes. Parameter is the new value.
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent<bool> OnValueChanged = new();
-
-        /// <summary>
-        /// Fired when the flag becomes true.
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent OnBecameTrue = new();
-
-        /// <summary>
-        /// Fired when the flag becomes false.
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent OnBecameFalse = new();
+        [SerializeField]
+        private WorldFlagService_SO debugService;
 
         #endregion
 
         #region Properties
-
-        /// <summary>
-        /// Gets the current value of the flag.
-        /// </summary>
-        public bool Value => _currentValue;
 
         /// <summary>
         /// Gets the default value of the flag.
@@ -75,84 +46,67 @@ namespace HelloDev.Conditions.WorldFlags
 
         #endregion
 
-        #region Public Methods
+        #region Factory Method
 
         /// <summary>
-        /// Sets the flag value. Fires events if the value changed.
+        /// Creates a new runtime instance for this flag.
+        /// Prefer using WorldFlagService_SO.GetBoolFlag() instead of calling this directly.
         /// </summary>
-        /// <param name="value">The new value.</param>
-        public void SetValue(bool value)
+        /// <returns>A new runtime instance.</returns>
+        public WorldFlagBoolRuntime CreateRuntime()
         {
-            if (_currentValue == value) return;
-
-            bool previousValue = _currentValue;
-            _currentValue = value;
-
-            OnValueChanged?.Invoke(value);
-
-            if (value && !previousValue)
-            {
-                OnBecameTrue?.Invoke();
-            }
-            else if (!value && previousValue)
-            {
-                OnBecameFalse?.Invoke();
-            }
+            return new WorldFlagBoolRuntime(this);
         }
-
-        /// <summary>
-        /// Sets the flag to true.
-        /// </summary>
-        public void SetTrue() => SetValue(true);
-
-        /// <summary>
-        /// Sets the flag to false.
-        /// </summary>
-        public void SetFalse() => SetValue(false);
-
-        /// <summary>
-        /// Toggles the flag value.
-        /// </summary>
-        public void Toggle() => SetValue(!_currentValue);
-
-        /// <summary>
-        /// Resets the flag to its default value.
-        /// </summary>
-        public override void ResetToDefault()
-        {
-            _currentValue = defaultValue;
-            // Don't fire events on reset - this is initialization
-        }
-
-        /// <summary>
-        /// Gets a string representation of the current value.
-        /// </summary>
-        public override string GetValueAsString() => _currentValue.ToString();
 
         #endregion
 
 #if ODIN_INSPECTOR && UNITY_EDITOR
-        #region Debug Buttons
+        #region Debug
 
         [BoxGroup("Debug")]
-        [Button("Set True")]
+        [ShowInInspector, ReadOnly]
         [PropertyOrder(100)]
-        private void DebugSetTrue() => SetTrue();
+        private string RuntimeValue
+        {
+            get
+            {
+                if (!Application.isPlaying || debugService == null || !debugService.IsAvailable)
+                    return "(Not in play mode)";
+
+                var runtime = debugService.GetBoolFlag(this);
+                return runtime != null ? runtime.Value.ToString() : "(Not registered)";
+            }
+        }
 
         [BoxGroup("Debug")]
-        [Button("Set False")]
+        [Button("Set True (Runtime)")]
         [PropertyOrder(101)]
-        private void DebugSetFalse() => SetFalse();
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugSetTrue()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.SetBoolValue(this, true);
+        }
 
         [BoxGroup("Debug")]
-        [Button("Toggle")]
+        [Button("Set False (Runtime)")]
         [PropertyOrder(102)]
-        private void DebugToggle() => Toggle();
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugSetFalse()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.SetBoolValue(this, false);
+        }
 
         [BoxGroup("Debug")]
-        [Button("Reset to Default")]
+        [Button("Reset to Default (Runtime)")]
         [PropertyOrder(103)]
-        private void DebugReset() => ResetToDefault();
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugReset()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.ResetFlag(this);
+        }
 
         #endregion
 #endif

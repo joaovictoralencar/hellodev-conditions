@@ -2,7 +2,8 @@
     "name": "HelloDev.Conditions",
     "rootNamespace": "HelloDev.Conditions",
     "references": [
-        "HelloDev.Utils"
+        "HelloDev.Utils",
+        "HelloDev.Singletons"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

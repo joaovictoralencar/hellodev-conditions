@@ -34,6 +34,14 @@ namespace HelloDev.Conditions.WorldFlags
         #region Serialized Fields
 
 #if ODIN_INSPECTOR
+        [BoxGroup("Service")]
+        [PropertyOrder(-1)]
+        [Tooltip("The WorldFlagService that provides access to flag runtime values.")]
+#endif
+        [SerializeField]
+        private WorldFlagService_SO flagService;
+
+#if ODIN_INSPECTOR
         [BoxGroup("Flag Type")]
         [PropertyOrder(0)]
         [Tooltip("If true, this modification affects a boolean flag. If false, it affects an integer flag.")]
@@ -126,6 +134,11 @@ namespace HelloDev.Conditions.WorldFlags
         public bool IsValid => (isBoolFlag && boolFlag != null) || (!isBoolFlag && intFlag != null);
 
         /// <summary>
+        /// Gets whether this modification has a valid service reference.
+        /// </summary>
+        public bool HasService => flagService != null;
+
+        /// <summary>
         /// Gets a description of this modification for debugging.
         /// </summary>
         public string Description
@@ -152,7 +165,7 @@ namespace HelloDev.Conditions.WorldFlags
         #region Methods
 
         /// <summary>
-        /// Applies this modification to the target world flag.
+        /// Applies this modification to the target world flag via the configured service.
         /// </summary>
         public void Apply()
         {
@@ -162,9 +175,15 @@ namespace HelloDev.Conditions.WorldFlags
                 return;
             }
 
+            if (flagService == null || !flagService.IsAvailable)
+            {
+                Debug.LogWarning("[WorldFlagModification] Cannot apply - flagService not available.");
+                return;
+            }
+
             if (isBoolFlag)
             {
-                boolFlag.SetValue(boolValue);
+                flagService.SetBoolValue(boolFlag, boolValue);
                 Debug.Log($"[WorldFlagModification] Set {boolFlag.FlagName} = {boolValue}");
             }
             else
@@ -172,16 +191,18 @@ namespace HelloDev.Conditions.WorldFlags
                 switch (intOperation)
                 {
                     case WorldFlagIntOperation.Set:
-                        intFlag.SetValue(intValue);
+                        flagService.SetIntValue(intFlag, intValue);
                         Debug.Log($"[WorldFlagModification] Set {intFlag.FlagName} = {intValue}");
                         break;
                     case WorldFlagIntOperation.Add:
-                        intFlag.Increment(intValue);
-                        Debug.Log($"[WorldFlagModification] {intFlag.FlagName} += {intValue} (now {intFlag.Value})");
+                        flagService.IncrementIntValue(intFlag, intValue);
+                        var addRuntime = flagService.GetIntFlag(intFlag);
+                        Debug.Log($"[WorldFlagModification] {intFlag.FlagName} += {intValue} (now {addRuntime?.Value})");
                         break;
                     case WorldFlagIntOperation.Subtract:
-                        intFlag.Decrement(intValue);
-                        Debug.Log($"[WorldFlagModification] {intFlag.FlagName} -= {intValue} (now {intFlag.Value})");
+                        flagService.DecrementIntValue(intFlag, intValue);
+                        var subRuntime = flagService.GetIntFlag(intFlag);
+                        Debug.Log($"[WorldFlagModification] {intFlag.FlagName} -= {intValue} (now {subRuntime?.Value})");
                         break;
                 }
             }
@@ -190,10 +211,11 @@ namespace HelloDev.Conditions.WorldFlags
         /// <summary>
         /// Creates a boolean flag modification.
         /// </summary>
-        public static WorldFlagModification CreateBool(WorldFlagBool_SO flag, bool value)
+        public static WorldFlagModification CreateBool(WorldFlagService_SO service, WorldFlagBool_SO flag, bool value)
         {
             return new WorldFlagModification
             {
+                flagService = service,
                 isBoolFlag = true,
                 boolFlag = flag,
                 boolValue = value
@@ -203,10 +225,11 @@ namespace HelloDev.Conditions.WorldFlags
         /// <summary>
         /// Creates an integer flag modification.
         /// </summary>
-        public static WorldFlagModification CreateInt(WorldFlagInt_SO flag, WorldFlagIntOperation operation, int value)
+        public static WorldFlagModification CreateInt(WorldFlagService_SO service, WorldFlagInt_SO flag, WorldFlagIntOperation operation, int value)
         {
             return new WorldFlagModification
             {
+                flagService = service,
                 isBoolFlag = false,
                 intFlag = flag,
                 intOperation = operation,

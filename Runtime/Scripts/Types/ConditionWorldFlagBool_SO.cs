@@ -8,7 +8,7 @@ namespace HelloDev.Conditions.Types
 {
     /// <summary>
     /// Condition that checks a WorldFlagBool_SO against an expected value.
-    /// Subscribes to the flag's change events for reactive evaluation.
+    /// Subscribes to the flag's runtime change events for reactive evaluation.
     ///
     /// Example usage:
     /// - Check if player chose the evil path: WorldFlag = "chose_evil_path", ExpectedValue = true
@@ -18,6 +18,15 @@ namespace HelloDev.Conditions.Types
     public class ConditionWorldFlagBool_SO : Condition_SO, IConditionEventDriven
     {
         #region Serialized Fields
+
+#if ODIN_INSPECTOR
+        [BoxGroup("Service")]
+        [PropertyOrder(-1)]
+        [Required]
+#endif
+        [SerializeField]
+        [Tooltip("The WorldFlagService that provides access to flag runtime values.")]
+        private WorldFlagService_SO flagService;
 
 #if ODIN_INSPECTOR
         [BoxGroup("World Flag")]
@@ -42,6 +51,7 @@ namespace HelloDev.Conditions.Types
 
         private System.Action _onConditionMet;
         private bool _isSubscribed;
+        private WorldFlagBoolRuntime _cachedRuntime;
 
         #endregion
 
@@ -57,6 +67,21 @@ namespace HelloDev.Conditions.Types
         /// </summary>
         public bool ExpectedValue => expectedValue;
 
+        /// <summary>
+        /// Gets the runtime instance from the flag service.
+        /// </summary>
+        private WorldFlagBoolRuntime Runtime
+        {
+            get
+            {
+                if (_cachedRuntime == null && worldFlag != null && flagService != null && flagService.IsAvailable)
+                {
+                    _cachedRuntime = flagService.GetBoolFlag(worldFlag);
+                }
+                return _cachedRuntime;
+            }
+        }
+
         #endregion
 
         #region Condition Implementation
@@ -68,7 +93,15 @@ namespace HelloDev.Conditions.Types
         {
             if (worldFlag == null) return false;
 
-            bool result = worldFlag.Value == expectedValue;
+            var runtime = Runtime;
+            if (runtime == null)
+            {
+                // Fallback to default value if runtime not available
+                bool defaultResult = worldFlag.DefaultValue == expectedValue;
+                return IsInverted ? !defaultResult : defaultResult;
+            }
+
+            bool result = runtime.Value == expectedValue;
             return IsInverted ? !result : result;
         }
 
@@ -84,8 +117,15 @@ namespace HelloDev.Conditions.Types
             if (_isSubscribed) return;
             if (worldFlag == null) return;
 
+            var runtime = Runtime;
+            if (runtime == null)
+            {
+                Debug.LogWarning($"[{name}] Cannot subscribe - flagService not available or flag not registered.");
+                return;
+            }
+
             _onConditionMet = onConditionMet;
-            worldFlag.OnValueChanged.AddListener(HandleValueChanged);
+            runtime.OnValueChanged.AddListener(HandleValueChanged);
             _isSubscribed = true;
         }
 
@@ -95,11 +135,16 @@ namespace HelloDev.Conditions.Types
         public void UnsubscribeFromEvent()
         {
             if (!_isSubscribed) return;
-            if (worldFlag == null) return;
 
-            worldFlag.OnValueChanged.RemoveListener(HandleValueChanged);
+            var runtime = Runtime;
+            if (runtime != null)
+            {
+                runtime.OnValueChanged.RemoveListener(HandleValueChanged);
+            }
+
             _isSubscribed = false;
             _onConditionMet = null;
+            _cachedRuntime = null;
         }
 
         /// <summary>
@@ -107,9 +152,11 @@ namespace HelloDev.Conditions.Types
         /// </summary>
         public void ForceFulfillCondition()
         {
-            if (worldFlag != null)
+            if (worldFlag == null) return;
+
+            if (flagService != null && flagService.IsAvailable)
             {
-                worldFlag.SetValue(expectedValue);
+                flagService.SetBoolValue(worldFlag, expectedValue);
             }
         }
 
@@ -148,7 +195,18 @@ namespace HelloDev.Conditions.Types
         [ShowInInspector]
         [ReadOnly]
         [PropertyOrder(100)]
-        private bool CurrentFlagValue => worldFlag != null ? worldFlag.Value : false;
+        private string CurrentFlagValue
+        {
+            get
+            {
+                if (worldFlag == null) return "(No flag)";
+                if (!Application.isPlaying || flagService == null || !flagService.IsAvailable)
+                    return $"(Default: {worldFlag.DefaultValue})";
+
+                var runtime = flagService.GetBoolFlag(worldFlag);
+                return runtime != null ? runtime.Value.ToString() : "(Not registered)";
+            }
+        }
 
         [BoxGroup("Debug")]
         [ShowInInspector]
@@ -167,6 +225,7 @@ namespace HelloDev.Conditions.Types
         [BoxGroup("Debug")]
         [Button("Force Fulfill")]
         [PropertyOrder(103)]
+        [EnableIf("@UnityEngine.Application.isPlaying")]
         private void DebugForceFulfill() => ForceFulfillCondition();
 
         #endregion

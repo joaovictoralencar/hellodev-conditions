@@ -1,6 +1,4 @@
-using System;
 using UnityEngine;
-using UnityEngine.Events;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -8,8 +6,8 @@ using Sirenix.OdinInspector;
 namespace HelloDev.Conditions.WorldFlags
 {
     /// <summary>
-    /// A self-contained integer world state flag.
-    /// Stores an integer value and fires events when changed.
+    /// Immutable configuration for an integer world flag.
+    /// Use WorldFlagManager (via WorldFlagService_SO) to get the runtime instance for mutable state.
     ///
     /// Example uses:
     /// - Reputation values ("merchant_reputation", "thieves_guild_standing")
@@ -46,50 +44,17 @@ namespace HelloDev.Conditions.WorldFlags
         [Tooltip("Maximum allowed value (inclusive). Set to int.MaxValue for no maximum.")]
         private int maxValue = int.MaxValue;
 
-#if ODIN_INSPECTOR
-        [BoxGroup("Value")]
-        [PropertyOrder(13)]
-        [ReadOnly]
-        [ShowInInspector]
+#if ODIN_INSPECTOR && UNITY_EDITOR
+        [BoxGroup("Debug Service")]
+        [PropertyOrder(99)]
+        [Tooltip("Reference for debug buttons only. Not required for normal operation.")]
 #endif
-        private int _currentValue;
-
-        #endregion
-
-        #region Events
-
-        /// <summary>
-        /// Fired when the flag value changes. Parameters are (newValue, previousValue).
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent<int, int> OnValueChanged = new();
-
-        /// <summary>
-        /// Fired when the value is incremented.
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent<int> OnIncremented = new();
-
-        /// <summary>
-        /// Fired when the value is decremented.
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent<int> OnDecremented = new();
-
-        /// <summary>
-        /// Fired when the value reaches or exceeds a threshold (via SetValueWithThreshold).
-        /// </summary>
-        [NonSerialized]
-        public UnityEvent<int> OnThresholdReached = new();
+        [SerializeField]
+        private WorldFlagService_SO debugService;
 
         #endregion
 
         #region Properties
-
-        /// <summary>
-        /// Gets the current value of the flag.
-        /// </summary>
-        public int Value => _currentValue;
 
         /// <summary>
         /// Gets the default value of the flag.
@@ -106,154 +71,89 @@ namespace HelloDev.Conditions.WorldFlags
         /// </summary>
         public int MaxValue => maxValue;
 
-        /// <summary>
-        /// Gets whether the current value is at the minimum.
-        /// </summary>
-        public bool IsAtMin => _currentValue <= minValue;
-
-        /// <summary>
-        /// Gets whether the current value is at the maximum.
-        /// </summary>
-        public bool IsAtMax => _currentValue >= maxValue;
-
         #endregion
 
-        #region Public Methods
+        #region Factory Method
 
         /// <summary>
-        /// Sets the flag value, clamped to min/max bounds. Fires events if the value changed.
+        /// Creates a new runtime instance for this flag.
+        /// Prefer using WorldFlagService_SO.GetIntFlag() instead of calling this directly.
         /// </summary>
-        /// <param name="value">The new value.</param>
-        public void SetValue(int value)
+        /// <returns>A new runtime instance.</returns>
+        public WorldFlagIntRuntime CreateRuntime()
         {
-            int clampedValue = Mathf.Clamp(value, minValue, maxValue);
-            if (_currentValue == clampedValue) return;
-
-            int previousValue = _currentValue;
-            _currentValue = clampedValue;
-
-            OnValueChanged?.Invoke(_currentValue, previousValue);
-        }
-
-        /// <summary>
-        /// Increments the value by the specified amount.
-        /// </summary>
-        /// <param name="amount">Amount to add (default 1).</param>
-        public void Increment(int amount = 1)
-        {
-            int previousValue = _currentValue;
-            SetValue(_currentValue + amount);
-
-            if (_currentValue != previousValue)
-            {
-                OnIncremented?.Invoke(_currentValue);
-            }
-        }
-
-        /// <summary>
-        /// Decrements the value by the specified amount.
-        /// </summary>
-        /// <param name="amount">Amount to subtract (default 1).</param>
-        public void Decrement(int amount = 1)
-        {
-            int previousValue = _currentValue;
-            SetValue(_currentValue - amount);
-
-            if (_currentValue != previousValue)
-            {
-                OnDecremented?.Invoke(_currentValue);
-            }
-        }
-
-        /// <summary>
-        /// Sets the value and fires OnThresholdReached if it meets or exceeds the threshold.
-        /// Useful for tracking progress toward goals.
-        /// </summary>
-        /// <param name="value">The new value.</param>
-        /// <param name="threshold">The threshold to check against.</param>
-        public void SetValueWithThreshold(int value, int threshold)
-        {
-            bool wasBelowThreshold = _currentValue < threshold;
-            SetValue(value);
-
-            if (wasBelowThreshold && _currentValue >= threshold)
-            {
-                OnThresholdReached?.Invoke(_currentValue);
-            }
-        }
-
-        /// <summary>
-        /// Increments the value and fires OnThresholdReached if it meets or exceeds the threshold.
-        /// </summary>
-        /// <param name="threshold">The threshold to check against.</param>
-        /// <param name="amount">Amount to add (default 1).</param>
-        public void IncrementWithThreshold(int threshold, int amount = 1)
-        {
-            SetValueWithThreshold(_currentValue + amount, threshold);
-        }
-
-        /// <summary>
-        /// Resets the flag to its default value.
-        /// </summary>
-        public override void ResetToDefault()
-        {
-            _currentValue = Mathf.Clamp(defaultValue, minValue, maxValue);
-            // Don't fire events on reset - this is initialization
-        }
-
-        /// <summary>
-        /// Gets a string representation of the current value.
-        /// </summary>
-        public override string GetValueAsString() => _currentValue.ToString();
-
-        /// <summary>
-        /// Checks if the current value meets a comparison against a target.
-        /// </summary>
-        /// <param name="target">The target value to compare against.</param>
-        /// <param name="comparison">The comparison type.</param>
-        public bool Compare(int target, ComparisonType comparison)
-        {
-            return comparison switch
-            {
-                ComparisonType.Equals => _currentValue == target,
-                ComparisonType.NotEquals => _currentValue != target,
-                ComparisonType.LessThan => _currentValue < target,
-                ComparisonType.LessThanOrEqual => _currentValue <= target,
-                ComparisonType.GreaterThan => _currentValue > target,
-                ComparisonType.GreaterThanOrEqual => _currentValue >= target,
-                _ => false
-            };
+            return new WorldFlagIntRuntime(this);
         }
 
         #endregion
 
 #if ODIN_INSPECTOR && UNITY_EDITOR
-        #region Debug Buttons
+        #region Debug
 
         [BoxGroup("Debug")]
-        [Button("Increment")]
+        [ShowInInspector, ReadOnly]
         [PropertyOrder(100)]
-        private void DebugIncrement() => Increment();
+        private string RuntimeValue
+        {
+            get
+            {
+                if (!Application.isPlaying || debugService == null || !debugService.IsAvailable)
+                    return "(Not in play mode)";
+
+                var runtime = debugService.GetIntFlag(this);
+                return runtime != null ? runtime.Value.ToString() : "(Not registered)";
+            }
+        }
 
         [BoxGroup("Debug")]
-        [Button("Decrement")]
+        [Button("Increment (Runtime)")]
         [PropertyOrder(101)]
-        private void DebugDecrement() => Decrement();
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugIncrement()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.IncrementIntValue(this);
+        }
 
         [BoxGroup("Debug")]
-        [Button("Reset to Default")]
+        [Button("Decrement (Runtime)")]
         [PropertyOrder(102)]
-        private void DebugReset() => ResetToDefault();
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugDecrement()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.DecrementIntValue(this);
+        }
 
         [BoxGroup("Debug")]
-        [Button("Set to Max")]
+        [Button("Reset to Default (Runtime)")]
         [PropertyOrder(103)]
-        private void DebugSetMax() => SetValue(maxValue);
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugReset()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.ResetFlag(this);
+        }
 
         [BoxGroup("Debug")]
-        [Button("Set to Min")]
+        [Button("Set to Max (Runtime)")]
         [PropertyOrder(104)]
-        private void DebugSetMin() => SetValue(minValue);
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugSetMax()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.SetIntValue(this, maxValue);
+        }
+
+        [BoxGroup("Debug")]
+        [Button("Set to Min (Runtime)")]
+        [PropertyOrder(105)]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        private void DebugSetMin()
+        {
+            if (debugService != null && debugService.IsAvailable)
+                debugService.SetIntValue(this, minValue);
+        }
 
         #endregion
 #endif
