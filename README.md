@@ -19,9 +19,103 @@ Self-contained ScriptableObject flags for tracking persistent game state:
 
 - **WorldFlagBool_SO** - Boolean flags (met_king, chose_evil_path, dragon_defeated)
 - **WorldFlagInt_SO** - Integer flags with min/max (reputation, kill_count, gold_donated)
+- **WorldFlagManager** - Centralized manager for world flag runtime instances
+- **WorldFlagService_SO** - Service ScriptableObject for decoupled access
+- **WorldFlagRegistry_SO** - Registry for managing all flags in one place
 - **WorldFlagModification** - Defines how to modify flags (Set, Add, Subtract)
 - **ConditionWorldFlagBool_SO** - Check boolean flag values
 - **ConditionWorldFlagInt_SO** - Check integer flags with comparisons (>=, <, ==, etc.)
+
+## Getting Started
+
+### 1. Install the Package
+
+**Via Package Manager (Local):**
+1. Open Unity Package Manager (Window > Package Manager)
+2. Click "+" > "Add package from disk"
+3. Navigate to this folder and select `package.json`
+
+**Dependencies:** Ensure `com.hellodev.utils` and `com.hellodev.events` are installed.
+
+### 2. Create Your First Condition
+
+**Simple Boolean Condition:**
+1. Create a GameEventBool_SO: **Create > HelloDev > Events > Bool Game Event**
+2. Create a condition: **Create > HelloDev > Conditions > Bool Condition**
+3. In the condition inspector, assign the event and set `targetValue` to `true`
+
+**Use in Code:**
+```csharp
+using HelloDev.Conditions;
+using UnityEngine;
+
+public class Door : MonoBehaviour
+{
+    [SerializeField] private Condition_SO unlockCondition;
+
+    public void TryOpen()
+    {
+        if (unlockCondition.Evaluate())
+        {
+            Open();
+        }
+        else
+        {
+            ShowLockedMessage();
+        }
+    }
+}
+```
+
+### 3. Use World Flags for Persistent State
+
+World flags are perfect for tracking game progress across scenes and play sessions.
+
+**Create World Flags:**
+1. **Create > HelloDev > World State > Bool Flag** (e.g., "HasMetKing")
+2. **Create > HelloDev > World State > Int Flag** (e.g., "PlayerReputation")
+
+**Use in Code:**
+```csharp
+using HelloDev.Conditions.WorldFlags;
+using UnityEngine;
+
+public class NPCDialogue : MonoBehaviour
+{
+    [SerializeField] private WorldFlagService_SO flagService;
+    [SerializeField] private WorldFlagBool_SO hasMetKingData;
+    [SerializeField] private WorldFlagInt_SO reputationData;
+
+    public void OnMeetKing()
+    {
+        // Access runtime flags through the manager
+        if (flagService.IsAvailable)
+        {
+            flagService.Manager.SetBoolValue(hasMetKingData, true);
+            flagService.Manager.IncrementIntValue(reputationData, 10);
+        }
+    }
+
+    public bool CanAccessRoyalQuest()
+    {
+        if (!flagService.IsAvailable) return false;
+
+        flagService.Manager.TryGetBoolValue(hasMetKingData, out bool metKing);
+        flagService.Manager.TryGetIntValue(reputationData, out int rep);
+        return metKing && rep >= 50;
+    }
+}
+```
+
+### 4. Set Up the World Flag Manager (Optional)
+
+For centralized flag management with events and runtime control:
+
+1. Create a **WorldFlagService_SO**: **Create > HelloDev > World State > World Flag Service**
+2. Create a **WorldFlagRegistry_SO**: **Create > HelloDev > World State > World Flag Registry**
+3. Add your flags to the registry
+4. Add a **WorldFlagManager** component to your scene
+5. Assign the service and registry references
 
 ## Installation
 
@@ -122,24 +216,77 @@ using HelloDev.Conditions.WorldFlags;
 
 public class QuestGiver : MonoBehaviour
 {
-    [SerializeField] private WorldFlagBool_SO metKingFlag;
-    [SerializeField] private WorldFlagInt_SO reputationFlag;
+    [SerializeField] private WorldFlagService_SO flagService;
+    [SerializeField] private WorldFlagBool_SO metKingFlagData;
+    [SerializeField] private WorldFlagInt_SO reputationFlagData;
 
     public void OnMeetKing()
     {
-        metKingFlag.SetTrue();
+        // Modify flags through the manager
+        flagService.Manager.SetBoolValue(metKingFlagData, true);
     }
 
     public void OnCompleteQuest()
     {
-        reputationFlag.Increment(10); // Add 10 to reputation
+        flagService.Manager.IncrementIntValue(reputationFlagData, 10);
     }
 
     void Start()
     {
-        // Subscribe to flag changes
-        metKingFlag.OnBecameTrue.AddListener(OnMetKing);
-        reputationFlag.OnValueChanged.AddListener(OnReputationChanged);
+        // Subscribe to manager events for flag changes
+        flagService.Manager.OnBoolFlagChanged.AddListener(OnBoolFlagChanged);
+        flagService.Manager.OnIntFlagChanged.AddListener(OnIntFlagChanged);
+    }
+
+    void OnBoolFlagChanged(WorldFlagBool_SO flag, bool newValue)
+    {
+        if (flag == metKingFlagData && newValue)
+            Debug.Log("Player met the king!");
+    }
+
+    void OnIntFlagChanged(WorldFlagInt_SO flag, int newValue)
+    {
+        if (flag == reputationFlagData)
+            Debug.Log($"Reputation changed to: {newValue}");
+    }
+}
+```
+
+#### Using the World Flag Manager
+
+For centralized flag management with bootstrap support:
+
+```csharp
+using HelloDev.Conditions.WorldFlags;
+
+public class GameController : MonoBehaviour
+{
+    [SerializeField] private WorldFlagService_SO flagService;
+
+    void Start()
+    {
+        // Access flags through the service
+        if (flagService.IsAvailable)
+        {
+            var manager = flagService.Manager;
+
+            // Get flag values
+            if (manager.TryGetBoolValue(hasMetKingFlag, out bool value))
+            {
+                Debug.Log($"Has met king: {value}");
+            }
+
+            // Set flag values
+            manager.SetBoolValue(hasMetKingFlag, true);
+            manager.SetIntValue(reputationFlag, 50);
+
+            // Increment/decrement int flags
+            manager.IncrementIntValue(killCountFlag, 1);
+
+            // Subscribe to manager events
+            manager.OnBoolFlagChanged.AddListener(HandleBoolFlagChanged);
+            manager.OnIntFlagChanged.AddListener(HandleIntFlagChanged);
+        }
     }
 }
 ```
@@ -206,11 +353,16 @@ repBoost.Apply();
 | `Operator` | And/Or logic for combining |
 | `Cleanup()` | Unsubscribe and clear state |
 
-### WorldFlagBool_SO
+### WorldFlagBool_SO (Data)
+| Member | Description |
+|--------|-------------|
+| `DefaultValue` | Value when reset |
+| `FlagId` | Unique identifier |
+
+### WorldFlagBoolRuntime (accessed via Manager)
 | Member | Description |
 |--------|-------------|
 | `Value` | Current boolean value |
-| `DefaultValue` | Value when reset |
 | `SetValue(bool)` | Set the flag value |
 | `SetTrue()` | Set flag to true |
 | `SetFalse()` | Set flag to false |
@@ -220,17 +372,41 @@ repBoost.Apply();
 | `OnBecameTrue` | Event fired when flag becomes true |
 | `OnBecameFalse` | Event fired when flag becomes false |
 
-### WorldFlagInt_SO
+### WorldFlagInt_SO (Data)
+| Member | Description |
+|--------|-------------|
+| `DefaultValue` | Value when reset |
+| `MinValue` / `MaxValue` | Optional clamping bounds |
+| `FlagId` | Unique identifier |
+
+### WorldFlagIntRuntime (accessed via Manager)
 | Member | Description |
 |--------|-------------|
 | `Value` | Current integer value |
-| `DefaultValue` | Value when reset |
-| `MinValue` / `MaxValue` | Optional clamping bounds |
 | `SetValue(int)` | Set the flag value |
 | `Increment(int)` | Add to current value |
 | `Decrement(int)` | Subtract from current value |
 | `ResetToDefault()` | Reset to default value |
 | `OnValueChanged` | Event fired when value changes |
+
+### WorldFlagManager
+| Member | Description |
+|--------|-------------|
+| `Service` | The service this manager is registered with |
+| `FlagCount` | Number of registered flags |
+| `AllFlags` | All registered runtime flags |
+| `GetBoolFlag(flagData)` | Get bool flag runtime instance |
+| `GetIntFlag(flagData)` | Get int flag runtime instance |
+| `TryGetBoolValue(flagData, out value)` | Try get bool flag value |
+| `TryGetIntValue(flagData, out value)` | Try get int flag value |
+| `SetBoolValue(flagData, value)` | Set bool flag value |
+| `SetIntValue(flagData, value)` | Set int flag value |
+| `IncrementIntValue(flagData, amount)` | Increment int flag |
+| `DecrementIntValue(flagData, amount)` | Decrement int flag |
+| `ResetAllFlags()` | Reset all flags to defaults |
+| `OnBoolFlagChanged` | Event for bool flag changes |
+| `OnIntFlagChanged` | Event for int flag changes |
+| `OnFlagRegistered` | Event when flag is registered |
 
 ### WorldFlagModification
 | Member | Description |
@@ -254,6 +430,9 @@ repBoost.Apply();
 - Added `WorldFlagBase_SO` abstract base class for world flags
 - Added `WorldFlagBool_SO` for boolean state tracking
 - Added `WorldFlagInt_SO` for integer state tracking with min/max bounds
+- Added `WorldFlagManager` for centralized flag management
+- Added `WorldFlagService_SO` for decoupled service access
+- Added `WorldFlagRegistry_SO` for flag auto-discovery
 - Added `WorldFlagModification` for applying flag changes
 - Added `ConditionWorldFlagBool_SO` for checking boolean flags
 - Added `ConditionWorldFlagInt_SO` for checking integer flags with comparisons
@@ -262,6 +441,7 @@ repBoost.Apply();
 - Self-contained ScriptableObject approach (not interface-based)
 - Each flag stores its own value and fires events when changed
 - Supports quest system integration via WorldFlagModification
+- Bootstrap-compatible with `IBootstrapInitializable` on WorldFlagManager
 
 ### v1.1.0 (2025-12-21)
 **Bug Fixes:**
