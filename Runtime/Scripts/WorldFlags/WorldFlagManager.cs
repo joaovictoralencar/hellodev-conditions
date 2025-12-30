@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using HelloDev.Utils;
 using UnityEngine;
 using UnityEngine.Events;
 #if ODIN_INSPECTOR
@@ -13,7 +15,15 @@ namespace HelloDev.Conditions.WorldFlags
     /// Manages the lifecycle of WorldFlagRuntime objects and provides access to flag values.
     /// Registers itself with a WorldFlagService_SO for decoupled access.
     /// </summary>
-    public class WorldFlagManager : MonoBehaviour
+    /// <remarks>
+    /// Supports two initialization modes:
+    /// <list type="bullet">
+    /// <item><term>Standalone</term><description>Self-initializes in OnEnable (default)</description></item>
+    /// <item><term>Bootstrap</term><description>Waits for GameBootstrap to call InitializeAsync</description></item>
+    /// </list>
+    /// Set <see cref="selfInitialize"/> to false when using with GameBootstrap.
+    /// </remarks>
+    public class WorldFlagManager : MonoBehaviour, IBootstrapInitializable
     {
         #region Serialized Fields
 
@@ -45,12 +55,33 @@ namespace HelloDev.Conditions.WorldFlags
         [Tooltip("If true, this manager persists across scene loads.")]
         private bool persistent = true;
 
+#if ODIN_INSPECTOR
+        [Title("Initialization")]
+        [ToggleLeft]
+#else
+        [Header("Initialization")]
+#endif
+        [SerializeField]
+        [Tooltip("If true, initializes in OnEnable. If false, waits for external initialization (e.g., GameBootstrap).")]
+        private bool selfInitialize = true;
+
         #endregion
 
         #region Runtime State
 
         private readonly Dictionary<string, WorldFlagRuntime> _runtimeFlags = new();
         private readonly Dictionary<WorldFlagBase_SO, WorldFlagRuntime> _dataToRuntime = new();
+        private bool _isInitialized;
+
+        #endregion
+
+        #region IBootstrapInitializable
+
+        /// <inheritdoc />
+        public int InitializationPriority => 100; // Data layer
+
+        /// <inheritdoc />
+        public bool IsInitialized => _isInitialized;
 
         #endregion
 
@@ -104,6 +135,24 @@ namespace HelloDev.Conditions.WorldFlags
 
         private void OnEnable()
         {
+            // Only self-initialize if in standalone mode
+            if (selfInitialize)
+            {
+                _ = InitializeAsync();
+            }
+        }
+
+        private void OnDisable()
+        {
+            Shutdown();
+        }
+
+        /// <inheritdoc />
+        public Task InitializeAsync()
+        {
+            if (_isInitialized)
+                return Task.CompletedTask;
+
             // Register with service
             if (service != null)
             {
@@ -116,15 +165,24 @@ namespace HelloDev.Conditions.WorldFlags
 
             // Register initial flags
             RegisterInitialFlags();
+
+            _isInitialized = true;
+            return Task.CompletedTask;
         }
 
-        private void OnDisable()
+        /// <inheritdoc />
+        public void Shutdown()
         {
+            if (!_isInitialized)
+                return;
+
             // Unregister from service
             if (service != null)
             {
                 service.Unregister(this);
             }
+
+            _isInitialized = false;
         }
 
         private void RegisterInitialFlags()
