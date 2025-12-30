@@ -20,13 +20,13 @@ namespace HelloDev.Conditions.Types
         #region Serialized Fields
 
 #if ODIN_INSPECTOR
-        [BoxGroup("Service")]
+        [BoxGroup("Locator")]
         [PropertyOrder(-1)]
         [Required]
 #endif
         [SerializeField]
-        [Tooltip("The WorldFlagService that provides access to flag runtime values.")]
-        private WorldFlagService_SO flagService;
+        [Tooltip("The WorldFlagLocator that provides access to flag runtime values.")]
+        private WorldFlagLocator_SO flagLocator;
 
 #if ODIN_INSPECTOR
         [BoxGroup("World Flag")]
@@ -81,15 +81,15 @@ namespace HelloDev.Conditions.Types
         public ComparisonType ComparisonType => comparisonType;
 
         /// <summary>
-        /// Gets the runtime instance from the flag service.
+        /// Gets the runtime instance from the flag locator.
         /// </summary>
         private WorldFlagIntRuntime Runtime
         {
             get
             {
-                if (_cachedRuntime == null && worldFlag != null && flagService != null && flagService.IsAvailable)
+                if (_cachedRuntime == null && worldFlag != null && flagLocator != null && flagLocator.IsAvailable)
                 {
-                    _cachedRuntime = flagService.GetIntFlag(worldFlag);
+                    _cachedRuntime = flagLocator.GetIntFlag(worldFlag);
                 }
                 return _cachedRuntime;
             }
@@ -181,7 +181,7 @@ namespace HelloDev.Conditions.Types
         public void ForceFulfillCondition()
         {
             if (worldFlag == null) return;
-            if (flagService == null || !flagService.IsAvailable) return;
+            if (flagLocator == null || !flagLocator.IsAvailable) return;
 
             int valueToSet = comparisonType switch
             {
@@ -194,7 +194,7 @@ namespace HelloDev.Conditions.Types
                 _ => targetValue
             };
 
-            flagService.SetIntValue(worldFlag, valueToSet);
+            flagLocator.SetIntValue(worldFlag, valueToSet);
         }
 
         #endregion
@@ -237,10 +237,10 @@ namespace HelloDev.Conditions.Types
             get
             {
                 if (worldFlag == null) return "(No flag)";
-                if (!Application.isPlaying || flagService == null || !flagService.IsAvailable)
+                if (!Application.isPlaying || flagLocator == null || !flagLocator.IsAvailable)
                     return $"(Default: {worldFlag.DefaultValue})";
 
-                var runtime = flagService.GetIntFlag(worldFlag);
+                var runtime = flagLocator.GetIntFlag(worldFlag);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }

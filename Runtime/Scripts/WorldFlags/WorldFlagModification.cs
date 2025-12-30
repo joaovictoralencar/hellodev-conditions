@@ -34,12 +34,12 @@ namespace HelloDev.Conditions.WorldFlags
         #region Serialized Fields
 
 #if ODIN_INSPECTOR
-        [BoxGroup("Service")]
+        [BoxGroup("Locator")]
         [PropertyOrder(-1)]
-        [Tooltip("The WorldFlagService that provides access to flag runtime values.")]
+        [Tooltip("The WorldFlagLocator that provides access to flag runtime values.")]
 #endif
         [SerializeField]
-        private WorldFlagService_SO flagService;
+        private WorldFlagLocator_SO flagLocator;
 
 #if ODIN_INSPECTOR
         [BoxGroup("Flag Type")]
@@ -134,9 +134,9 @@ namespace HelloDev.Conditions.WorldFlags
         public bool IsValid => (isBoolFlag && boolFlag != null) || (!isBoolFlag && intFlag != null);
 
         /// <summary>
-        /// Gets whether this modification has a valid service reference.
+        /// Gets whether this modification has a valid locator reference.
         /// </summary>
-        public bool HasService => flagService != null;
+        public bool HasLocator => flagLocator != null;
 
         /// <summary>
         /// Gets a description of this modification for debugging.
@@ -165,7 +165,7 @@ namespace HelloDev.Conditions.WorldFlags
         #region Methods
 
         /// <summary>
-        /// Applies this modification to the target world flag via the configured service.
+        /// Applies this modification to the target world flag via the configured locator.
         /// </summary>
         public void Apply()
         {
@@ -175,15 +175,15 @@ namespace HelloDev.Conditions.WorldFlags
                 return;
             }
 
-            if (flagService == null || !flagService.IsAvailable)
+            if (flagLocator == null || !flagLocator.IsAvailable)
             {
-                Debug.LogWarning("[WorldFlagModification] Cannot apply - flagService not available.");
+                Debug.LogWarning("[WorldFlagModification] Cannot apply - flagLocator not available.");
                 return;
             }
 
             if (isBoolFlag)
             {
-                flagService.SetBoolValue(boolFlag, boolValue);
+                flagLocator.SetBoolValue(boolFlag, boolValue);
                 Debug.Log($"[WorldFlagModification] Set {boolFlag.FlagName} = {boolValue}");
             }
             else
@@ -191,17 +191,17 @@ namespace HelloDev.Conditions.WorldFlags
                 switch (intOperation)
                 {
                     case WorldFlagIntOperation.Set:
-                        flagService.SetIntValue(intFlag, intValue);
+                        flagLocator.SetIntValue(intFlag, intValue);
                         Debug.Log($"[WorldFlagModification] Set {intFlag.FlagName} = {intValue}");
                         break;
                     case WorldFlagIntOperation.Add:
-                        flagService.IncrementIntValue(intFlag, intValue);
-                        var addRuntime = flagService.GetIntFlag(intFlag);
+                        flagLocator.IncrementIntValue(intFlag, intValue);
+                        var addRuntime = flagLocator.GetIntFlag(intFlag);
                         Debug.Log($"[WorldFlagModification] {intFlag.FlagName} += {intValue} (now {addRuntime?.Value})");
                         break;
                     case WorldFlagIntOperation.Subtract:
-                        flagService.DecrementIntValue(intFlag, intValue);
-                        var subRuntime = flagService.GetIntFlag(intFlag);
+                        flagLocator.DecrementIntValue(intFlag, intValue);
+                        var subRuntime = flagLocator.GetIntFlag(intFlag);
                         Debug.Log($"[WorldFlagModification] {intFlag.FlagName} -= {intValue} (now {subRuntime?.Value})");
                         break;
                 }
@@ -211,11 +211,11 @@ namespace HelloDev.Conditions.WorldFlags
         /// <summary>
         /// Creates a boolean flag modification.
         /// </summary>
-        public static WorldFlagModification CreateBool(WorldFlagService_SO service, WorldFlagBool_SO flag, bool value)
+        public static WorldFlagModification CreateBool(WorldFlagLocator_SO locator, WorldFlagBool_SO flag, bool value)
         {
             return new WorldFlagModification
             {
-                flagService = service,
+                flagLocator = locator,
                 isBoolFlag = true,
                 boolFlag = flag,
                 boolValue = value
@@ -225,11 +225,11 @@ namespace HelloDev.Conditions.WorldFlags
         /// <summary>
         /// Creates an integer flag modification.
         /// </summary>
-        public static WorldFlagModification CreateInt(WorldFlagService_SO service, WorldFlagInt_SO flag, WorldFlagIntOperation operation, int value)
+        public static WorldFlagModification CreateInt(WorldFlagLocator_SO locator, WorldFlagInt_SO flag, WorldFlagIntOperation operation, int value)
         {
             return new WorldFlagModification
             {
-                flagService = service,
+                flagLocator = locator,
                 isBoolFlag = false,
                 intFlag = flag,
                 intOperation = operation,

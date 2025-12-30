@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HelloDev.Utils;
 using UnityEngine;
 using UnityEngine.Events;
 #if ODIN_INSPECTOR
@@ -8,18 +9,35 @@ using Sirenix.OdinInspector;
 namespace HelloDev.Conditions.WorldFlags
 {
     /// <summary>
-    /// ScriptableObject service locator for WorldFlagManager.
+    /// ScriptableObject locator for WorldFlagManager.
     /// Acts as a "channel" that any asset can reference to access world flags.
-    /// The WorldFlagManager registers itself with this service on enable.
+    /// The WorldFlagManager registers itself with this locator on enable.
     ///
     /// Usage:
-    /// 1. Create a single WorldFlagService_SO asset in your project
-    /// 2. Assign it to WorldFlagManager's "Service" field
+    /// 1. Create a single WorldFlagLocator_SO asset in your project
+    /// 2. Assign it to WorldFlagManager's "Locator" field
     /// 3. Reference the same asset in any SO that needs world flag access
     /// </summary>
-    [CreateAssetMenu(fileName = "WorldFlagService", menuName = "HelloDev/Services/World Flag Service")]
-    public class WorldFlagService_SO : ScriptableObject
+    [CreateAssetMenu(fileName = "WorldFlagLocator", menuName = "HelloDev/Locators/World Flag Locator")]
+    public class WorldFlagLocator_SO : LocatorBase_SO
     {
+        #region LocatorBase_SO Implementation
+
+        /// <inheritdoc/>
+        public override string LocatorId => "HelloDev.Conditions.WorldFlags";
+
+        /// <inheritdoc/>
+        public override bool IsAvailable => _manager != null;
+
+        /// <inheritdoc/>
+        public override void PrepareForBootstrap()
+        {
+            // Manager will re-register during bootstrap
+            _manager = null;
+        }
+
+        #endregion
+
         #region Private Fields
 
         private WorldFlagManager _manager;
@@ -29,9 +47,9 @@ namespace HelloDev.Conditions.WorldFlags
         #region Properties
 
         /// <summary>
-        /// Returns true if a WorldFlagManager is currently registered.
+        /// Gets the registered manager instance.
         /// </summary>
-        public bool IsAvailable => _manager != null;
+        public WorldFlagManager Manager => _manager;
 
         /// <summary>
         /// Gets the count of registered flags.
@@ -49,13 +67,13 @@ namespace HelloDev.Conditions.WorldFlags
         #region Events
 
         /// <summary>
-        /// Fired when a manager registers with this service.
+        /// Fired when a manager registers with this locator.
         /// </summary>
         [System.NonSerialized]
         public UnityEvent OnManagerRegistered = new();
 
         /// <summary>
-        /// Fired when a manager unregisters from this service.
+        /// Fired when a manager unregisters from this locator.
         /// </summary>
         [System.NonSerialized]
         public UnityEvent OnManagerUnregistered = new();
@@ -65,7 +83,7 @@ namespace HelloDev.Conditions.WorldFlags
         #region Registration
 
         /// <summary>
-        /// Registers a WorldFlagManager with this service.
+        /// Registers a WorldFlagManager with this locator.
         /// Called by WorldFlagManager.OnEnable().
         /// </summary>
         public void Register(WorldFlagManager manager)
@@ -74,7 +92,7 @@ namespace HelloDev.Conditions.WorldFlags
 
             if (_manager != null && _manager != manager)
             {
-                Debug.LogWarning($"[WorldFlagService] Replacing existing manager. Old: {_manager.name}, New: {manager.name}");
+                Debug.LogWarning($"[WorldFlagLocator] Replacing existing manager. Old: {_manager.name}, New: {manager.name}");
             }
 
             _manager = manager;
@@ -82,7 +100,7 @@ namespace HelloDev.Conditions.WorldFlags
         }
 
         /// <summary>
-        /// Unregisters a WorldFlagManager from this service.
+        /// Unregisters a WorldFlagManager from this locator.
         /// Called by WorldFlagManager.OnDisable().
         /// </summary>
         public void Unregister(WorldFlagManager manager)

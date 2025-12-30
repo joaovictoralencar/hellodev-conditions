@@ -7,7 +7,7 @@ namespace HelloDev.Conditions.WorldFlags
 {
     /// <summary>
     /// Immutable configuration for an integer world flag.
-    /// Use WorldFlagManager (via WorldFlagService_SO) to get the runtime instance for mutable state.
+    /// Use WorldFlagManager (via WorldFlagLocator_SO) to get the runtime instance for mutable state.
     ///
     /// Example uses:
     /// - Reputation values ("merchant_reputation", "thieves_guild_standing")
@@ -45,12 +45,12 @@ namespace HelloDev.Conditions.WorldFlags
         private int maxValue = int.MaxValue;
 
 #if ODIN_INSPECTOR && UNITY_EDITOR
-        [BoxGroup("Debug Service")]
+        [BoxGroup("Debug Locator")]
         [PropertyOrder(99)]
         [Tooltip("Reference for debug buttons only. Not required for normal operation.")]
 #endif
         [SerializeField]
-        private WorldFlagService_SO debugService;
+        private WorldFlagLocator_SO debugLocator;
 
         #endregion
 
@@ -77,7 +77,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         /// <summary>
         /// Creates a new runtime instance for this flag.
-        /// Prefer using WorldFlagService_SO.GetIntFlag() instead of calling this directly.
+        /// Prefer using WorldFlagLocator_SO.GetIntFlag() instead of calling this directly.
         /// </summary>
         /// <returns>A new runtime instance.</returns>
         public WorldFlagIntRuntime CreateRuntime()
@@ -97,10 +97,10 @@ namespace HelloDev.Conditions.WorldFlags
         {
             get
             {
-                if (!Application.isPlaying || debugService == null || !debugService.IsAvailable)
+                if (!Application.isPlaying || debugLocator == null || !debugLocator.IsAvailable)
                     return "(Not in play mode)";
 
-                var runtime = debugService.GetIntFlag(this);
+                var runtime = debugLocator.GetIntFlag(this);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }
@@ -108,51 +108,51 @@ namespace HelloDev.Conditions.WorldFlags
         [BoxGroup("Debug")]
         [Button("Increment (Runtime)")]
         [PropertyOrder(101)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugIncrement()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.IncrementIntValue(this);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.IncrementIntValue(this);
         }
 
         [BoxGroup("Debug")]
         [Button("Decrement (Runtime)")]
         [PropertyOrder(102)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugDecrement()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.DecrementIntValue(this);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.DecrementIntValue(this);
         }
 
         [BoxGroup("Debug")]
         [Button("Reset to Default (Runtime)")]
         [PropertyOrder(103)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugReset()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.ResetFlag(this);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.ResetFlag(this);
         }
 
         [BoxGroup("Debug")]
         [Button("Set to Max (Runtime)")]
         [PropertyOrder(104)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugSetMax()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.SetIntValue(this, maxValue);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.SetIntValue(this, maxValue);
         }
 
         [BoxGroup("Debug")]
         [Button("Set to Min (Runtime)")]
         [PropertyOrder(105)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugSetMin()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.SetIntValue(this, minValue);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.SetIntValue(this, minValue);
         }
 
         #endregion

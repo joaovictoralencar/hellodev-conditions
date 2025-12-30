@@ -97,18 +97,18 @@ namespace HelloDev.Conditions.WorldFlags
         }
 
         /// <summary>
-        /// Resets all flags to their default values via the provided service.
+        /// Resets all flags to their default values via the provided locator.
         /// </summary>
-        /// <param name="flagService">The flag service to use.</param>
-        public void ResetAllFlags(WorldFlagService_SO flagService)
+        /// <param name="flagLocator">The flag locator to use.</param>
+        public void ResetAllFlags(WorldFlagLocator_SO flagLocator)
         {
-            if (flagService != null && flagService.IsAvailable)
+            if (flagLocator != null && flagLocator.IsAvailable)
             {
-                flagService.ResetAllFlags();
+                flagLocator.ResetAllFlags();
             }
             else
             {
-                Debug.LogWarning("[WorldFlagRegistry] Cannot reset flags - flagService not available.");
+                Debug.LogWarning("[WorldFlagRegistry] Cannot reset flags - flagLocator not available.");
             }
         }
 
@@ -174,18 +174,18 @@ namespace HelloDev.Conditions.WorldFlags
             }
         }
 
-        [Title("Debug Service")]
-        [InfoBox("Assign a WorldFlagService_SO to use runtime debug features.")]
+        [Title("Debug Locator")]
+        [InfoBox("Assign a WorldFlagLocator_SO to use runtime debug features.")]
         [SerializeField]
-        private WorldFlagService_SO debugService;
+        private WorldFlagLocator_SO debugLocator;
 
         [Button("Log All Flag Values (Runtime)")]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void LogAllFlagValues()
         {
-            if (debugService == null || !debugService.IsAvailable)
+            if (debugLocator == null || !debugLocator.IsAvailable)
             {
-                Debug.LogWarning("[WorldFlagRegistry] WorldFlagService not available.");
+                Debug.LogWarning("[WorldFlagRegistry] WorldFlagLocator not available.");
                 return;
             }
 
@@ -194,7 +194,7 @@ namespace HelloDev.Conditions.WorldFlags
             {
                 if (flag == null) continue;
 
-                var runtime = debugService.GetFlag(flag);
+                var runtime = debugLocator.GetFlag(flag);
                 string value = runtime?.GetValueAsString() ?? "(not registered)";
                 Debug.Log($"  [{flag.GetType().Name}] {flag.FlagName}: {value}");
             }

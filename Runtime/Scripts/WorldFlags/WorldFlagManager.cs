@@ -13,7 +13,7 @@ namespace HelloDev.Conditions.WorldFlags
     /// <summary>
     /// Manager for world flag runtime instances.
     /// Manages the lifecycle of WorldFlagRuntime objects and provides access to flag values.
-    /// Registers itself with a WorldFlagService_SO for decoupled access.
+    /// Registers itself with a WorldFlagLocator_SO for decoupled access.
     /// </summary>
     /// <remarks>
     /// Supports two initialization modes:
@@ -28,13 +28,13 @@ namespace HelloDev.Conditions.WorldFlags
         #region Serialized Fields
 
 #if ODIN_INSPECTOR
-        [Title("Service")]
+        [Title("Locator")]
         [Required]
-        [InfoBox("Reference the WorldFlagService_SO asset. This manager will register itself with the service on enable.")]
+        [InfoBox("Reference the WorldFlagLocator_SO asset. This manager will register itself with the locator on enable.")]
 #endif
         [SerializeField]
-        [Tooltip("The service SO that provides decoupled access to this manager.")]
-        private WorldFlagService_SO service;
+        [Tooltip("The locator SO that provides decoupled access to this manager.")]
+        private WorldFlagLocator_SO locator;
 
 #if ODIN_INSPECTOR
         [Title("Configuration")]
@@ -107,9 +107,9 @@ namespace HelloDev.Conditions.WorldFlags
         #region Properties
 
         /// <summary>
-        /// Gets the service this manager is registered with.
+        /// Gets the locator this manager is registered with.
         /// </summary>
-        public WorldFlagService_SO Service => service;
+        public WorldFlagLocator_SO Locator => locator;
 
         /// <summary>
         /// Gets the count of registered flags.
@@ -153,14 +153,14 @@ namespace HelloDev.Conditions.WorldFlags
             if (_isInitialized)
                 return Task.CompletedTask;
 
-            // Register with service
-            if (service != null)
+            // Register with locator
+            if (locator != null)
             {
-                service.Register(this);
+                locator.Register(this);
             }
             else
             {
-                Debug.LogWarning($"[WorldFlagManager] No service assigned on {name}. Flags will not be accessible via service.");
+                Debug.LogWarning($"[WorldFlagManager] No locator assigned on {name}. Flags will not be accessible via locator.");
             }
 
             // Register initial flags
@@ -176,10 +176,10 @@ namespace HelloDev.Conditions.WorldFlags
             if (!_isInitialized)
                 return;
 
-            // Unregister from service
-            if (service != null)
+            // Unregister from locator
+            if (locator != null)
             {
-                service.Unregister(this);
+                locator.Unregister(this);
             }
 
             _isInitialized = false;

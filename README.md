@@ -20,7 +20,7 @@ Self-contained ScriptableObject flags for tracking persistent game state:
 - **WorldFlagBool_SO** - Boolean flags (met_king, chose_evil_path, dragon_defeated)
 - **WorldFlagInt_SO** - Integer flags with min/max (reputation, kill_count, gold_donated)
 - **WorldFlagManager** - Centralized manager for world flag runtime instances
-- **WorldFlagService_SO** - Service ScriptableObject for decoupled access
+- **WorldFlagLocator_SO** - Locator ScriptableObject for decoupled access
 - **WorldFlagRegistry_SO** - Registry for managing all flags in one place
 - **WorldFlagModification** - Defines how to modify flags (Set, Add, Subtract)
 - **ConditionWorldFlagBool_SO** - Check boolean flag values
@@ -82,26 +82,26 @@ using UnityEngine;
 
 public class NPCDialogue : MonoBehaviour
 {
-    [SerializeField] private WorldFlagService_SO flagService;
+    [SerializeField] private WorldFlagLocator_SO flagLocator;
     [SerializeField] private WorldFlagBool_SO hasMetKingData;
     [SerializeField] private WorldFlagInt_SO reputationData;
 
     public void OnMeetKing()
     {
         // Access runtime flags through the manager
-        if (flagService.IsAvailable)
+        if (flagLocator.IsAvailable)
         {
-            flagService.Manager.SetBoolValue(hasMetKingData, true);
-            flagService.Manager.IncrementIntValue(reputationData, 10);
+            flagLocator.Manager.SetBoolValue(hasMetKingData, true);
+            flagLocator.Manager.IncrementIntValue(reputationData, 10);
         }
     }
 
     public bool CanAccessRoyalQuest()
     {
-        if (!flagService.IsAvailable) return false;
+        if (!flagLocator.IsAvailable) return false;
 
-        flagService.Manager.TryGetBoolValue(hasMetKingData, out bool metKing);
-        flagService.Manager.TryGetIntValue(reputationData, out int rep);
+        flagLocator.Manager.TryGetBoolValue(hasMetKingData, out bool metKing);
+        flagLocator.Manager.TryGetIntValue(reputationData, out int rep);
         return metKing && rep >= 50;
     }
 }
@@ -111,11 +111,11 @@ public class NPCDialogue : MonoBehaviour
 
 For centralized flag management with events and runtime control:
 
-1. Create a **WorldFlagService_SO**: **Create > HelloDev > World State > World Flag Service**
+1. Create a **WorldFlagLocator_SO**: **Create > HelloDev > Locators > World Flag Locator**
 2. Create a **WorldFlagRegistry_SO**: **Create > HelloDev > World State > World Flag Registry**
 3. Add your flags to the registry
 4. Add a **WorldFlagManager** component to your scene
-5. Assign the service and registry references
+5. Assign the locator and registry references
 
 ## Installation
 
@@ -216,26 +216,26 @@ using HelloDev.Conditions.WorldFlags;
 
 public class QuestGiver : MonoBehaviour
 {
-    [SerializeField] private WorldFlagService_SO flagService;
+    [SerializeField] private WorldFlagLocator_SO flagLocator;
     [SerializeField] private WorldFlagBool_SO metKingFlagData;
     [SerializeField] private WorldFlagInt_SO reputationFlagData;
 
     public void OnMeetKing()
     {
         // Modify flags through the manager
-        flagService.Manager.SetBoolValue(metKingFlagData, true);
+        flagLocator.Manager.SetBoolValue(metKingFlagData, true);
     }
 
     public void OnCompleteQuest()
     {
-        flagService.Manager.IncrementIntValue(reputationFlagData, 10);
+        flagLocator.Manager.IncrementIntValue(reputationFlagData, 10);
     }
 
     void Start()
     {
         // Subscribe to manager events for flag changes
-        flagService.Manager.OnBoolFlagChanged.AddListener(OnBoolFlagChanged);
-        flagService.Manager.OnIntFlagChanged.AddListener(OnIntFlagChanged);
+        flagLocator.Manager.OnBoolFlagChanged.AddListener(OnBoolFlagChanged);
+        flagLocator.Manager.OnIntFlagChanged.AddListener(OnIntFlagChanged);
     }
 
     void OnBoolFlagChanged(WorldFlagBool_SO flag, bool newValue)
@@ -261,14 +261,14 @@ using HelloDev.Conditions.WorldFlags;
 
 public class GameController : MonoBehaviour
 {
-    [SerializeField] private WorldFlagService_SO flagService;
+    [SerializeField] private WorldFlagLocator_SO flagLocator;
 
     void Start()
     {
-        // Access flags through the service
-        if (flagService.IsAvailable)
+        // Access flags through the locator
+        if (flagLocator.IsAvailable)
         {
-            var manager = flagService.Manager;
+            var manager = flagLocator.Manager;
 
             // Get flag values
             if (manager.TryGetBoolValue(hasMetKingFlag, out bool value))
@@ -392,7 +392,7 @@ repBoost.Apply();
 ### WorldFlagManager
 | Member | Description |
 |--------|-------------|
-| `Service` | The service this manager is registered with |
+| `Locator` | The locator this manager is registered with |
 | `FlagCount` | Number of registered flags |
 | `AllFlags` | All registered runtime flags |
 | `GetBoolFlag(flagData)` | Get bool flag runtime instance |
@@ -431,7 +431,7 @@ repBoost.Apply();
 - Added `WorldFlagBool_SO` for boolean state tracking
 - Added `WorldFlagInt_SO` for integer state tracking with min/max bounds
 - Added `WorldFlagManager` for centralized flag management
-- Added `WorldFlagService_SO` for decoupled service access
+- Added `WorldFlagLocator_SO` for decoupled locator access
 - Added `WorldFlagRegistry_SO` for flag auto-discovery
 - Added `WorldFlagModification` for applying flag changes
 - Added `ConditionWorldFlagBool_SO` for checking boolean flags

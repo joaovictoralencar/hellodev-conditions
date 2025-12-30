@@ -7,7 +7,7 @@ namespace HelloDev.Conditions.WorldFlags
 {
     /// <summary>
     /// Immutable configuration for a boolean world flag.
-    /// Use WorldFlagManager (via WorldFlagService_SO) to get the runtime instance for mutable state.
+    /// Use WorldFlagManager (via WorldFlagLocator_SO) to get the runtime instance for mutable state.
     ///
     /// Example uses:
     /// - Quest branch decisions ("spared_the_merchant", "joined_thieves_guild")
@@ -28,12 +28,12 @@ namespace HelloDev.Conditions.WorldFlags
         private bool defaultValue = false;
 
 #if ODIN_INSPECTOR && UNITY_EDITOR
-        [BoxGroup("Debug Service")]
+        [BoxGroup("Debug Locator")]
         [PropertyOrder(99)]
         [Tooltip("Reference for debug buttons only. Not required for normal operation.")]
 #endif
         [SerializeField]
-        private WorldFlagService_SO debugService;
+        private WorldFlagLocator_SO debugLocator;
 
         #endregion
 
@@ -50,7 +50,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         /// <summary>
         /// Creates a new runtime instance for this flag.
-        /// Prefer using WorldFlagService_SO.GetBoolFlag() instead of calling this directly.
+        /// Prefer using WorldFlagLocator_SO.GetBoolFlag() instead of calling this directly.
         /// </summary>
         /// <returns>A new runtime instance.</returns>
         public WorldFlagBoolRuntime CreateRuntime()
@@ -70,10 +70,10 @@ namespace HelloDev.Conditions.WorldFlags
         {
             get
             {
-                if (!Application.isPlaying || debugService == null || !debugService.IsAvailable)
+                if (!Application.isPlaying || debugLocator == null || !debugLocator.IsAvailable)
                     return "(Not in play mode)";
 
-                var runtime = debugService.GetBoolFlag(this);
+                var runtime = debugLocator.GetBoolFlag(this);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }
@@ -81,11 +81,11 @@ namespace HelloDev.Conditions.WorldFlags
         [BoxGroup("Debug")]
         [Button("Set True (Runtime)")]
         [PropertyOrder(101)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugSetTrue()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.SetBoolValue(this, true);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.SetBoolValue(this, true);
         }
 
         [BoxGroup("Debug")]
@@ -94,18 +94,18 @@ namespace HelloDev.Conditions.WorldFlags
         [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
         private void DebugSetFalse()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.SetBoolValue(this, false);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.SetBoolValue(this, false);
         }
 
         [BoxGroup("Debug")]
         [Button("Reset to Default (Runtime)")]
         [PropertyOrder(103)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
         private void DebugReset()
         {
-            if (debugService != null && debugService.IsAvailable)
-                debugService.ResetFlag(this);
+            if (debugLocator != null && debugLocator.IsAvailable)
+                debugLocator.ResetFlag(this);
         }
 
         #endregion
