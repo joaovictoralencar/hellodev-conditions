@@ -78,6 +78,9 @@ namespace HelloDev.Conditions.WorldFlags
         #region IBootstrapInitializable
 
         /// <inheritdoc />
+        public bool SelfInitialize => selfInitialize;
+
+        /// <inheritdoc />
         public int InitializationPriority => 100; // Data layer
 
         /// <inheritdoc />
