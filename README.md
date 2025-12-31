@@ -392,6 +392,8 @@ repBoost.Apply();
 ### WorldFlagManager
 | Member | Description |
 |--------|-------------|
+| `SelfInitialize` | If true, self-initializes in Unity lifecycle. Set false for bootstrap mode. |
+| `InitializationPriority` | Bootstrap priority (100 - Data Layer) |
 | `Locator` | The locator this manager is registered with |
 | `FlagCount` | Number of registered flags |
 | `AllFlags` | All registered runtime flags |
@@ -424,6 +426,11 @@ repBoost.Apply();
 - com.hellodev.events (1.1.0+)
 
 ## Changelog
+
+### v1.2.1 (2025-12-31)
+**Bootstrap Support:**
+- Added `SelfInitialize` property to `WorldFlagManager` for bootstrap mode support
+- When `SelfInitialize = false`, manager waits for `GameBootstrap` to call `InitializeAsync`
 
 ### v1.2.0 (2025-12-28)
 **World State Flags:**
