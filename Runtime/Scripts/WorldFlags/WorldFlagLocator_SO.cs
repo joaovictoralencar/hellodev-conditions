@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using HelloDev.Logging;
 using HelloDev.Utils;
 using UnityEngine;
 using UnityEngine.Events;
+using Logger = HelloDev.Logging.Logger;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -92,7 +94,7 @@ namespace HelloDev.Conditions.WorldFlags
 
             if (_manager != null && _manager != manager)
             {
-                Debug.LogWarning($"[WorldFlagLocator] Replacing existing manager. Old: {_manager.name}, New: {manager.name}");
+                Logger.LogWarning(LogSystems.WorldFlags, $"Replacing existing manager. Old: {_manager.name}, New: {manager.name}");
             }
 
             _manager = manager;

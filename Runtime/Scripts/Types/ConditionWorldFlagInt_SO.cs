@@ -1,5 +1,7 @@
 using HelloDev.Conditions.WorldFlags;
+using HelloDev.Logging;
 using UnityEngine;
+using Logger = HelloDev.Logging.Logger;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -57,8 +59,21 @@ namespace HelloDev.Conditions.Types
 
         #region Private Fields
 
+        /// <summary>
+        /// Multicast delegate for all registered callbacks.
+        /// </summary>
         private System.Action _onConditionMet;
-        private bool _isSubscribed;
+
+        /// <summary>
+        /// Number of active subscribers.
+        /// </summary>
+        private int _subscriberCount;
+
+        /// <summary>
+        /// Whether we're subscribed to the underlying WorldFlag event.
+        /// </summary>
+        private bool _isSubscribedToEvent;
+
         private WorldFlagIntRuntime _cachedRuntime;
 
         #endregion
@@ -138,40 +153,54 @@ namespace HelloDev.Conditions.Types
 
         /// <summary>
         /// Subscribes to the world flag's value changed event.
+        /// Multiple subscribers can register callbacks.
         /// </summary>
         public void SubscribeToEvent(System.Action onConditionMet)
         {
-            if (_isSubscribed) return;
+            if (onConditionMet == null) return;
             if (worldFlag == null) return;
 
             var runtime = Runtime;
             if (runtime == null)
             {
-                Debug.LogWarning($"[{name}] Cannot subscribe - flagService not available or flag not registered.");
+                Logger.LogWarning(LogSystems.Conditions, $"[{name}] Cannot subscribe - flagService not available or flag not registered.");
                 return;
             }
 
-            _onConditionMet = onConditionMet;
-            runtime.OnValueChanged.AddListener(HandleValueChanged);
-            _isSubscribed = true;
+            // Add callback to multicast delegate
+            _onConditionMet += onConditionMet;
+            _subscriberCount++;
+
+            // Subscribe to underlying event on first subscriber
+            if (!_isSubscribedToEvent)
+            {
+                runtime.OnValueChanged.AddListener(HandleValueChanged);
+                _isSubscribedToEvent = true;
+            }
         }
 
         /// <summary>
-        /// Unsubscribes from the world flag's value changed event.
+        /// Unsubscribes a specific callback from the world flag's value changed event.
         /// </summary>
-        public void UnsubscribeFromEvent()
+        public void UnsubscribeFromEvent(System.Action callback)
         {
-            if (!_isSubscribed) return;
+            if (callback == null) return;
 
-            var runtime = Runtime;
-            if (runtime != null)
+            // Remove callback from multicast delegate
+            _onConditionMet -= callback;
+            _subscriberCount = System.Math.Max(0, _subscriberCount - 1);
+
+            // Unsubscribe from underlying event when no subscribers remain
+            if (_subscriberCount == 0 && _isSubscribedToEvent)
             {
-                runtime.OnValueChanged.RemoveListener(HandleValueChanged);
+                var runtime = Runtime;
+                if (runtime != null)
+                {
+                    runtime.OnValueChanged.RemoveListener(HandleValueChanged);
+                }
+                _isSubscribedToEvent = false;
+                _cachedRuntime = null;
             }
-
-            _isSubscribed = false;
-            _onConditionMet = null;
-            _cachedRuntime = null;
         }
 
         /// <summary>
@@ -215,12 +244,32 @@ namespace HelloDev.Conditions.Types
 
         protected override void OnScriptableObjectReset()
         {
-            UnsubscribeFromEvent();
+            ClearAllSubscriptions();
         }
 
         private void OnDestroy()
         {
-            UnsubscribeFromEvent();
+            ClearAllSubscriptions();
+        }
+
+        /// <summary>
+        /// Clears all subscriptions. Used during reset and destroy.
+        /// </summary>
+        private void ClearAllSubscriptions()
+        {
+            if (_isSubscribedToEvent)
+            {
+                var runtime = Runtime;
+                if (runtime != null)
+                {
+                    runtime.OnValueChanged.RemoveListener(HandleValueChanged);
+                }
+                _isSubscribedToEvent = false;
+            }
+
+            _onConditionMet = null;
+            _subscriberCount = 0;
+            _cachedRuntime = null;
         }
 
         #endregion
@@ -284,7 +333,7 @@ namespace HelloDev.Conditions.Types
         [PropertyOrder(103)]
         private void DebugEvaluate()
         {
-            Debug.Log($"[{name}] {ComparisonDescription} = {Evaluate()}");
+            Logger.Log(LogSystems.Conditions, $"[{name}] {ComparisonDescription} = {Evaluate()}");
         }
 
         [BoxGroup("Debug")]

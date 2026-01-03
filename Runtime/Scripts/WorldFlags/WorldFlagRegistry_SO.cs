@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using HelloDev.Logging;
 using UnityEngine;
+using Logger = HelloDev.Logging.Logger;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -108,7 +110,7 @@ namespace HelloDev.Conditions.WorldFlags
             }
             else
             {
-                Debug.LogWarning("[WorldFlagRegistry] Cannot reset flags - flagLocator not available.");
+                Logger.LogWarning(LogSystems.WorldFlags, "Cannot reset flags - flagLocator not available.");
             }
         }
 
@@ -136,7 +138,7 @@ namespace HelloDev.Conditions.WorldFlags
             }
 
             UnityEditor.EditorUtility.SetDirty(this);
-            Debug.Log($"[WorldFlagRegistry] Found {worldFlags.Count} WorldFlag assets.");
+            Logger.Log(LogSystems.WorldFlags, $"Found {worldFlags.Count} WorldFlag assets.");
         }
 
         [Button("Clear All")]
@@ -166,11 +168,11 @@ namespace HelloDev.Conditions.WorldFlags
 
             if (duplicates.Count > 0)
             {
-                Debug.LogWarning($"[WorldFlagRegistry] Duplicate flags found: {string.Join(", ", duplicates)}");
+                Logger.LogWarning(LogSystems.WorldFlags, $"Duplicate flags found: {string.Join(", ", duplicates)}");
             }
             else
             {
-                Debug.Log("[WorldFlagRegistry] No duplicates found.");
+                Logger.Log(LogSystems.WorldFlags, "No duplicates found.");
             }
         }
 
@@ -185,18 +187,18 @@ namespace HelloDev.Conditions.WorldFlags
         {
             if (debugLocator == null || !debugLocator.IsAvailable)
             {
-                Debug.LogWarning("[WorldFlagRegistry] WorldFlagLocator not available.");
+                Logger.LogWarning(LogSystems.WorldFlags, "WorldFlagLocator not available.");
                 return;
             }
 
-            Debug.Log("[WorldFlagRegistry] Current flag values:");
+            Logger.Log(LogSystems.WorldFlags, "Current flag values:");
             foreach (var flag in worldFlags)
             {
                 if (flag == null) continue;
 
                 var runtime = debugLocator.GetFlag(flag);
                 string value = runtime?.GetValueAsString() ?? "(not registered)";
-                Debug.Log($"  [{flag.GetType().Name}] {flag.FlagName}: {value}");
+                Logger.Log(LogSystems.WorldFlags, $"  [{flag.GetType().Name}] {flag.FlagName}: {value}");
             }
         }
 #endif

@@ -427,6 +427,15 @@ repBoost.Apply();
 
 ## Changelog
 
+### v1.3.0 (2026-01-03)
+**Multi-Subscriber Support:**
+- `ConditionEventDriven_SO<T>` now supports multiple subscribers to the same condition
+- Each task/system can register its own callback via `SubscribeToEvent()`
+- Underlying GameEvent subscription is managed automatically (subscribes on first, unsubscribes when all removed)
+- Breaking change: `UnsubscribeFromEvent()` now requires the callback parameter to remove
+- Added `SubscriberCount` property to track active subscribers
+- Improved logging with HelloDev.Logging system
+
 ### v1.2.1 (2025-12-31)
 **Bootstrap Support:**
 - Added `SelfInitialize` property to `WorldFlagManager` for bootstrap mode support

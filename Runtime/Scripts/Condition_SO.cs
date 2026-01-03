@@ -1,5 +1,7 @@
+using HelloDev.Logging;
 using HelloDev.Utils;
 using UnityEngine;
+using Logger = HelloDev.Logging.Logger;
 
 namespace HelloDev.Conditions
 {
@@ -36,6 +38,7 @@ namespace HelloDev.Conditions
 
     /// <summary>
     /// Generic base class for event-driven conditions that react to GameEvents.
+    /// Supports multiple subscribers - each task/system can register its own callback.
     /// </summary>
     /// <typeparam name="T">The type of value the condition compares against.</typeparam>
     /// <remarks>
@@ -47,8 +50,22 @@ namespace HelloDev.Conditions
         [SerializeField] protected T targetValue;
         [SerializeField] protected ComparisonType _comparisonType = ComparisonType.Equals;
 
+        /// <summary>
+        /// Multicast delegate for all registered callbacks.
+        /// Uses event-like pattern to support multiple subscribers.
+        /// </summary>
         private System.Action _onConditionMet;
-        private bool _isSubscribed;
+
+        /// <summary>
+        /// Number of active subscribers. Used to manage underlying event subscription.
+        /// </summary>
+        private int _subscriberCount;
+
+        /// <summary>
+        /// Whether we're subscribed to the underlying GameEvent.
+        /// </summary>
+        private bool _isSubscribedToEvent;
+
         private bool _lastResult;
         private bool _hasBeenEvaluated;
 
@@ -67,28 +84,59 @@ namespace HelloDev.Conditions
         public bool HasBeenEvaluated => _hasBeenEvaluated;
 
         /// <summary>
-        /// Subscribes to the underlying event.
+        /// Gets the number of active subscribers.
+        /// </summary>
+        public int SubscriberCount => _subscriberCount;
+
+        /// <summary>
+        /// Subscribes to the underlying event. Multiple subscribers can register callbacks.
         /// </summary>
         /// <param name="onConditionMet">Callback invoked when condition is met.</param>
         public virtual void SubscribeToEvent(System.Action onConditionMet)
         {
-            if (_isSubscribed) return;
+            if (onConditionMet == null) return;
 
-            _onConditionMet = onConditionMet;
-            SubscribeToSpecificEvent();
-            _isSubscribed = true;
+            // Add callback to multicast delegate
+            _onConditionMet += onConditionMet;
+            _subscriberCount++;
+
+            Logger.LogVerbose(LogSystems.Conditions, $"{name}: SubscribeToEvent - added callback (subscribers: {_subscriberCount})");
+
+            // Subscribe to underlying event on first subscriber
+            if (!_isSubscribedToEvent)
+            {
+                // Reset cached result when first subscriber joins - ensures condition
+                // only reports True for events that happen AFTER subscription
+                _lastResult = false;
+                _hasBeenEvaluated = false;
+
+                SubscribeToSpecificEvent();
+                _isSubscribedToEvent = true;
+                Logger.LogVerbose(LogSystems.Conditions, $"{name}: Subscribed to underlying GameEvent");
+            }
         }
 
         /// <summary>
-        /// Unsubscribes from the underlying event.
+        /// Unsubscribes a specific callback from the underlying event.
         /// </summary>
-        public virtual void UnsubscribeFromEvent()
+        /// <param name="callback">The callback to remove.</param>
+        public virtual void UnsubscribeFromEvent(System.Action callback)
         {
-            if (!_isSubscribed) return;
+            if (callback == null) return;
 
-            UnsubscribeFromSpecificEvent();
-            _isSubscribed = false;
-            _onConditionMet = null;
+            // Remove callback from multicast delegate
+            _onConditionMet -= callback;
+            _subscriberCount = System.Math.Max(0, _subscriberCount - 1);
+
+            Logger.LogVerbose(LogSystems.Conditions, $"{name}: UnsubscribeFromEvent - removed callback (subscribers: {_subscriberCount})");
+
+            // Unsubscribe from underlying event when no subscribers remain
+            if (_subscriberCount == 0 && _isSubscribedToEvent)
+            {
+                UnsubscribeFromSpecificEvent();
+                _isSubscribedToEvent = false;
+                Logger.LogVerbose(LogSystems.Conditions, $"{name}: Unsubscribed from underlying GameEvent");
+            }
         }
 
         /// <summary>
@@ -96,6 +144,7 @@ namespace HelloDev.Conditions
         /// </summary>
         public void ForceFulfillCondition()
         {
+            Logger.Log(LogSystems.Conditions, $"{name}: ForceFulfillCondition called (subscribers={_subscriberCount}, isSubscribedToEvent={_isSubscribedToEvent})");
             DebugForceFulfillCondition();
         }
 
@@ -109,7 +158,17 @@ namespace HelloDev.Conditions
         /// </summary>
         protected override void OnScriptableObjectReset()
         {
-            UnsubscribeFromEvent();
+            // Clear all callbacks
+            _onConditionMet = null;
+            _subscriberCount = 0;
+
+            // Unsubscribe from underlying event if subscribed
+            if (_isSubscribedToEvent)
+            {
+                UnsubscribeFromSpecificEvent();
+                _isSubscribedToEvent = false;
+            }
+
             _lastResult = false;
             _hasBeenEvaluated = false;
         }
@@ -134,9 +193,19 @@ namespace HelloDev.Conditions
             _lastResult = result;
             _hasBeenEvaluated = true;
 
+            Logger.LogVerbose(LogSystems.Conditions, $"{name}: OnEventTriggered - result={result}, subscribers={_subscriberCount}");
+
             if (result)
             {
-                _onConditionMet?.Invoke();
+                if (_onConditionMet != null)
+                {
+                    Logger.Log(LogSystems.Conditions, $"{name}: Invoking {_subscriberCount} callback(s)");
+                    _onConditionMet.Invoke();
+                }
+                else
+                {
+                    Logger.LogWarning(LogSystems.Conditions, $"{name}: Condition met but NO CALLBACKS to invoke!");
+                }
             }
         }
 
@@ -159,7 +228,14 @@ namespace HelloDev.Conditions
         /// </summary>
         protected virtual void OnDestroy()
         {
-            UnsubscribeFromEvent();
+            _onConditionMet = null;
+            _subscriberCount = 0;
+
+            if (_isSubscribedToEvent)
+            {
+                UnsubscribeFromSpecificEvent();
+                _isSubscribedToEvent = false;
+            }
         }
     }
 }

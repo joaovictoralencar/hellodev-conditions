@@ -8,6 +8,7 @@ namespace HelloDev.Conditions
     /// <summary>
     /// Combines multiple conditions using AND/OR logic.
     /// Implements IConditionEventDriven to support event-based evaluation.
+    /// Supports multiple subscribers.
     /// </summary>
     /// <remarks>
     /// For AND: all conditions must be met.
@@ -21,8 +22,26 @@ namespace HelloDev.Conditions
         [SerializeField] private CompositeOperator _operator = CompositeOperator.And;
 
         private readonly Dictionary<Condition_SO, bool> _conditionStates = new Dictionary<Condition_SO, bool>();
+
+        /// <summary>
+        /// Multicast delegate for all registered callbacks.
+        /// </summary>
         private Action _onConditionMet;
-        private bool _isSubscribed;
+
+        /// <summary>
+        /// Number of active subscribers.
+        /// </summary>
+        private int _subscriberCount;
+
+        /// <summary>
+        /// Whether we're subscribed to child condition events.
+        /// </summary>
+        private bool _isSubscribedToChildren;
+
+        /// <summary>
+        /// Stores callbacks for child conditions so we can properly unsubscribe.
+        /// </summary>
+        private readonly List<(IConditionEventDriven Condition, Action Callback)> _childSubscriptions = new();
 
         /// <summary>
         /// The child conditions in this composite.
@@ -36,45 +55,59 @@ namespace HelloDev.Conditions
 
         /// <summary>
         /// Subscribes to all event-driven child conditions.
+        /// Multiple subscribers can register callbacks.
         /// </summary>
         /// <param name="onConditionMet">Callback when the composite condition is met.</param>
         public void SubscribeToEvent(Action onConditionMet)
         {
-            if (_isSubscribed) return;
+            if (onConditionMet == null) return;
 
-            _onConditionMet = onConditionMet;
-            InitializeConditionStates();
+            // Add callback to multicast delegate
+            _onConditionMet += onConditionMet;
+            _subscriberCount++;
 
-            foreach (Condition_SO condition in _conditions)
+            // Subscribe to child conditions on first subscriber
+            if (!_isSubscribedToChildren)
             {
-                if (condition is IConditionEventDriven eventDriven)
-                {
-                    // Create a closure to track which condition triggered
-                    var capturedCondition = condition;
-                    eventDriven.SubscribeToEvent(() => OnChildConditionMet(capturedCondition));
-                }
-            }
+                InitializeConditionStates();
 
-            _isSubscribed = true;
+                foreach (Condition_SO condition in _conditions)
+                {
+                    if (condition is IConditionEventDriven eventDriven)
+                    {
+                        // Create and store a closure to track which condition triggered
+                        var capturedCondition = condition;
+                        Action callback = () => OnChildConditionMet(capturedCondition);
+                        eventDriven.SubscribeToEvent(callback);
+                        _childSubscriptions.Add((eventDriven, callback));
+                    }
+                }
+
+                _isSubscribedToChildren = true;
+            }
         }
 
         /// <summary>
-        /// Unsubscribes from all event-driven child conditions.
+        /// Unsubscribes a specific callback from the composite condition.
         /// </summary>
-        public void UnsubscribeFromEvent()
+        public void UnsubscribeFromEvent(Action callback)
         {
-            if (!_isSubscribed) return;
+            if (callback == null) return;
 
-            foreach (Condition_SO condition in _conditions)
+            // Remove callback from multicast delegate
+            _onConditionMet -= callback;
+            _subscriberCount = Math.Max(0, _subscriberCount - 1);
+
+            // Unsubscribe from child conditions when no subscribers remain
+            if (_subscriberCount == 0 && _isSubscribedToChildren)
             {
-                if (condition is IConditionEventDriven eventDriven)
+                foreach (var (condition, childCallback) in _childSubscriptions)
                 {
-                    eventDriven.UnsubscribeFromEvent();
+                    condition.UnsubscribeFromEvent(childCallback);
                 }
+                _childSubscriptions.Clear();
+                _isSubscribedToChildren = false;
             }
-
-            _isSubscribed = false;
-            _onConditionMet = null;
         }
 
         /// <summary>
@@ -133,7 +166,7 @@ namespace HelloDev.Conditions
             }
 
             // If not subscribed, evaluate conditions directly
-            if (!_isSubscribed)
+            if (!_isSubscribedToChildren)
             {
                 InitializeConditionStates();
             }
@@ -149,11 +182,22 @@ namespace HelloDev.Conditions
         }
 
         /// <summary>
-        /// Cleans up subscriptions and state.
+        /// Clears all subscriptions. Used during reset and destroy.
         /// </summary>
-        public void Cleanup()
+        private void ClearAllSubscriptions()
         {
-            UnsubscribeFromEvent();
+            if (_isSubscribedToChildren)
+            {
+                foreach (var (condition, callback) in _childSubscriptions)
+                {
+                    condition.UnsubscribeFromEvent(callback);
+                }
+                _childSubscriptions.Clear();
+                _isSubscribedToChildren = false;
+            }
+
+            _onConditionMet = null;
+            _subscriberCount = 0;
             _conditionStates.Clear();
         }
 
@@ -162,12 +206,12 @@ namespace HelloDev.Conditions
         /// </summary>
         protected override void OnScriptableObjectReset()
         {
-            Cleanup();
+            ClearAllSubscriptions();
         }
 
         private void OnDestroy()
         {
-            Cleanup();
+            ClearAllSubscriptions();
         }
     }
 }

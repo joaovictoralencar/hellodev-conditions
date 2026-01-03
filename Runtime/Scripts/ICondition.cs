@@ -19,19 +19,23 @@ namespace HelloDev.Conditions
 
     /// <summary>
     /// Extended interface for event-driven conditions that react to game events.
+    /// Supports multiple subscribers - each subscriber manages their own callback.
     /// </summary>
     public interface IConditionEventDriven : ICondition
     {
         /// <summary>
         /// Subscribes to the underlying event. The callback is invoked when the condition is met.
+        /// Multiple subscribers can register callbacks simultaneously.
         /// </summary>
         /// <param name="onConditionMet">Callback to invoke when condition evaluates to true.</param>
         void SubscribeToEvent(System.Action onConditionMet);
 
         /// <summary>
-        /// Unsubscribes from the underlying event.
+        /// Unsubscribes a specific callback from the underlying event.
+        /// Only removes the specified callback; other subscribers remain active.
         /// </summary>
-        void UnsubscribeFromEvent();
+        /// <param name="callback">The callback to remove.</param>
+        void UnsubscribeFromEvent(System.Action callback);
 
         /// <summary>
         /// Forces the condition to be fulfilled (for debugging/testing).

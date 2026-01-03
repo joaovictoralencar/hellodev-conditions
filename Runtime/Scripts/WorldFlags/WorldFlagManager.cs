@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using HelloDev.Logging;
 using HelloDev.Utils;
 using UnityEngine;
 using UnityEngine.Events;
+using Logger = HelloDev.Logging.Logger;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -74,6 +76,7 @@ namespace HelloDev.Conditions.WorldFlags
         private bool _isInitialized;
 
         #endregion
+
 
         #region IBootstrapInitializable
 
@@ -156,6 +159,8 @@ namespace HelloDev.Conditions.WorldFlags
             if (_isInitialized)
                 return Task.CompletedTask;
 
+            Logger.Log(LogSystems.WorldFlags, "Starting initialization...");
+
             // Register with locator
             if (locator != null)
             {
@@ -163,7 +168,7 @@ namespace HelloDev.Conditions.WorldFlags
             }
             else
             {
-                Debug.LogWarning($"[WorldFlagManager] No locator assigned on {name}. Flags will not be accessible via locator.");
+                Logger.LogWarning(LogSystems.WorldFlags, $"No locator assigned on {name}. Flags will not be accessible via locator.");
             }
 
             // Register initial flags
@@ -207,7 +212,7 @@ namespace HelloDev.Conditions.WorldFlags
                 }
             }
 
-            Debug.Log($"[WorldFlagManager] Initialized with {_runtimeFlags.Count} flags.");
+            Logger.Log(LogSystems.WorldFlags, $"Initialized with {_runtimeFlags.Count} flags.");
         }
 
         #endregion
@@ -223,7 +228,7 @@ namespace HelloDev.Conditions.WorldFlags
         {
             if (flagData == null)
             {
-                Debug.LogWarning("[WorldFlagManager] Cannot register null flag data.");
+                Logger.LogWarning(LogSystems.WorldFlags, "Cannot register null flag data.");
                 return null;
             }
 
@@ -261,7 +266,7 @@ namespace HelloDev.Conditions.WorldFlags
                     if (flagData != null)
                         RegisterFlag(flagData);
                 }
-                Debug.Log($"[WorldFlagManager] Registry set with {registry.Count} flags. Total: {_runtimeFlags.Count}");
+                Logger.Log(LogSystems.WorldFlags, $"Registry set with {registry.Count} flags. Total: {_runtimeFlags.Count}");
             }
         }
 
@@ -391,7 +396,7 @@ namespace HelloDev.Conditions.WorldFlags
                 runtime.SetValue(value);
                 return true;
             }
-            Debug.LogWarning($"[WorldFlagManager] Bool flag '{flagData?.FlagName}' not registered.");
+            Logger.LogWarning(LogSystems.WorldFlags, $"Bool flag '{flagData?.FlagName}' not registered.");
             return false;
         }
 
@@ -409,7 +414,7 @@ namespace HelloDev.Conditions.WorldFlags
                 runtime.SetValue(value);
                 return true;
             }
-            Debug.LogWarning($"[WorldFlagManager] Int flag '{flagData?.FlagName}' not registered.");
+            Logger.LogWarning(LogSystems.WorldFlags, $"Int flag '{flagData?.FlagName}' not registered.");
             return false;
         }
 
@@ -427,7 +432,7 @@ namespace HelloDev.Conditions.WorldFlags
                 runtime.Increment(amount);
                 return true;
             }
-            Debug.LogWarning($"[WorldFlagManager] Int flag '{flagData?.FlagName}' not registered.");
+            Logger.LogWarning(LogSystems.WorldFlags, $"Int flag '{flagData?.FlagName}' not registered.");
             return false;
         }
 
@@ -445,7 +450,7 @@ namespace HelloDev.Conditions.WorldFlags
                 runtime.Decrement(amount);
                 return true;
             }
-            Debug.LogWarning($"[WorldFlagManager] Int flag '{flagData?.FlagName}' not registered.");
+            Logger.LogWarning(LogSystems.WorldFlags, $"Int flag '{flagData?.FlagName}' not registered.");
             return false;
         }
 
@@ -462,7 +467,7 @@ namespace HelloDev.Conditions.WorldFlags
             {
                 runtime.ResetToDefault();
             }
-            Debug.Log($"[WorldFlagManager] Reset {_runtimeFlags.Count} flags to defaults.");
+            Logger.Log(LogSystems.WorldFlags, $"Reset {_runtimeFlags.Count} flags to defaults.");
         }
 
         /// <summary>
@@ -495,10 +500,10 @@ namespace HelloDev.Conditions.WorldFlags
         [PropertyOrder(101)]
         private void DebugLogAllValues()
         {
-            Debug.Log("[WorldFlagManager] Current flag values:");
+            Logger.Log(LogSystems.WorldFlags, "Current flag values:");
             foreach (var runtime in _runtimeFlags.Values)
             {
-                Debug.Log($"  [{runtime.GetType().Name}] {runtime.FlagName}: {runtime.GetValueAsString()}");
+                Logger.Log(LogSystems.WorldFlags, $"  [{runtime.GetType().Name}] {runtime.FlagName}: {runtime.GetValueAsString()}");
             }
         }
 

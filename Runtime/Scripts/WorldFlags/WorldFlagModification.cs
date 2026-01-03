@@ -1,5 +1,7 @@
 using System;
+using HelloDev.Logging;
 using UnityEngine;
+using Logger = HelloDev.Logging.Logger;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
@@ -171,20 +173,20 @@ namespace HelloDev.Conditions.WorldFlags
         {
             if (!IsValid)
             {
-                Debug.LogWarning("[WorldFlagModification] Cannot apply - no valid flag assigned.");
+                Logger.LogWarning(LogSystems.WorldFlags, "Cannot apply modification - no valid flag assigned.");
                 return;
             }
 
             if (flagLocator == null || !flagLocator.IsAvailable)
             {
-                Debug.LogWarning("[WorldFlagModification] Cannot apply - flagLocator not available.");
+                Logger.LogWarning(LogSystems.WorldFlags, "Cannot apply modification - flagLocator not available.");
                 return;
             }
 
             if (isBoolFlag)
             {
                 flagLocator.SetBoolValue(boolFlag, boolValue);
-                Debug.Log($"[WorldFlagModification] Set {boolFlag.FlagName} = {boolValue}");
+                Logger.LogVerbose(LogSystems.WorldFlags, $"Set {boolFlag.FlagName} = {boolValue}");
             }
             else
             {
@@ -192,17 +194,17 @@ namespace HelloDev.Conditions.WorldFlags
                 {
                     case WorldFlagIntOperation.Set:
                         flagLocator.SetIntValue(intFlag, intValue);
-                        Debug.Log($"[WorldFlagModification] Set {intFlag.FlagName} = {intValue}");
+                        Logger.LogVerbose(LogSystems.WorldFlags, $"Set {intFlag.FlagName} = {intValue}");
                         break;
                     case WorldFlagIntOperation.Add:
                         flagLocator.IncrementIntValue(intFlag, intValue);
                         var addRuntime = flagLocator.GetIntFlag(intFlag);
-                        Debug.Log($"[WorldFlagModification] {intFlag.FlagName} += {intValue} (now {addRuntime?.Value})");
+                        Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} += {intValue} (now {addRuntime?.Value})");
                         break;
                     case WorldFlagIntOperation.Subtract:
                         flagLocator.DecrementIntValue(intFlag, intValue);
                         var subRuntime = flagLocator.GetIntFlag(intFlag);
-                        Debug.Log($"[WorldFlagModification] {intFlag.FlagName} -= {intValue} (now {subRuntime?.Value})");
+                        Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} -= {intValue} (now {subRuntime?.Value})");
                         break;
                 }
             }
