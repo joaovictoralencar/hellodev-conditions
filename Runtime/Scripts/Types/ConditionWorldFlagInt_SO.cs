@@ -104,7 +104,7 @@ namespace HelloDev.Conditions.Types
             {
                 if (_cachedRuntime == null && worldFlag != null && flagLocator != null && flagLocator.IsAvailable)
                 {
-                    _cachedRuntime = flagLocator.GetIntFlag(worldFlag);
+                    _cachedRuntime = flagLocator.Manager.GetIntFlag(worldFlag);
                 }
                 return _cachedRuntime;
             }
@@ -223,7 +223,7 @@ namespace HelloDev.Conditions.Types
                 _ => targetValue
             };
 
-            flagLocator.SetIntValue(worldFlag, valueToSet);
+            flagLocator.Manager.SetIntValue(worldFlag, valueToSet);
         }
 
         #endregion
@@ -289,7 +289,7 @@ namespace HelloDev.Conditions.Types
                 if (!Application.isPlaying || flagLocator == null || !flagLocator.IsAvailable)
                     return $"(Default: {worldFlag.DefaultValue})";
 
-                var runtime = flagLocator.GetIntFlag(worldFlag);
+                var runtime = flagLocator.Manager.GetIntFlag(worldFlag);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }

@@ -91,7 +91,7 @@ namespace HelloDev.Conditions.Types
             {
                 if (_cachedRuntime == null && worldFlag != null && flagLocator != null && flagLocator.IsAvailable)
                 {
-                    _cachedRuntime = flagLocator.GetBoolFlag(worldFlag);
+                    _cachedRuntime = flagLocator.Manager.GetBoolFlag(worldFlag);
                 }
                 return _cachedRuntime;
             }
@@ -185,7 +185,7 @@ namespace HelloDev.Conditions.Types
 
             if (flagLocator != null && flagLocator.IsAvailable)
             {
-                flagLocator.SetBoolValue(worldFlag, expectedValue);
+                flagLocator.Manager.SetBoolValue(worldFlag, expectedValue);
             }
         }
 
@@ -252,7 +252,7 @@ namespace HelloDev.Conditions.Types
                 if (!Application.isPlaying || flagLocator == null || !flagLocator.IsAvailable)
                     return $"(Default: {worldFlag.DefaultValue})";
 
-                var runtime = flagLocator.GetBoolFlag(worldFlag);
+                var runtime = flagLocator.Manager.GetBoolFlag(worldFlag);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }

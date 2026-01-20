@@ -100,7 +100,7 @@ namespace HelloDev.Conditions.WorldFlags
                 if (!Application.isPlaying || debugLocator == null || !debugLocator.IsAvailable)
                     return "(Not in play mode)";
 
-                var runtime = debugLocator.GetIntFlag(this);
+                var runtime = debugLocator.Manager.GetIntFlag(this);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }
@@ -112,7 +112,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugIncrement()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.IncrementIntValue(this);
+                debugLocator.Manager.IncrementIntValue(this);
         }
 
         [BoxGroup("Debug")]
@@ -122,7 +122,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugDecrement()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.DecrementIntValue(this);
+                debugLocator.Manager.DecrementIntValue(this);
         }
 
         [BoxGroup("Debug")]
@@ -132,7 +132,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugReset()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.ResetFlag(this);
+                debugLocator.Manager.ResetFlag(this);
         }
 
         [BoxGroup("Debug")]
@@ -142,7 +142,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugSetMax()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.SetIntValue(this, maxValue);
+                debugLocator.Manager.SetIntValue(this, maxValue);
         }
 
         [BoxGroup("Debug")]
@@ -152,7 +152,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugSetMin()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.SetIntValue(this, minValue);
+                debugLocator.Manager.SetIntValue(this, minValue);
         }
 
         #endregion

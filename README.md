@@ -427,6 +427,12 @@ repBoost.Apply();
 
 ## Changelog
 
+### v1.4.0 (2026-01-19)
+**Locator Simplification (Breaking):**
+- Removed delegation methods from `WorldFlagLocator_SO` - use `.Manager` to access methods directly
+- Locator now only provides: `IsAvailable`, `Manager`, `Register()`, `Unregister()`, and events
+- **Migration:** Replace `flagLocator.MethodName()` with `flagLocator.Manager.MethodName()`
+
 ### v1.3.0 (2026-01-03)
 **Multi-Subscriber Support:**
 - `ConditionEventDriven_SO<T>` now supports multiple subscribers to the same condition

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using HelloDev.Logging;
 using HelloDev.Utils;
 using UnityEngine;
@@ -12,21 +11,26 @@ namespace HelloDev.Conditions.WorldFlags
 {
     /// <summary>
     /// ScriptableObject locator for WorldFlagManager.
-    /// Acts as a "channel" that any asset can reference to access world flags.
+    /// Acts as a decoupled access point that any asset can reference.
     /// The WorldFlagManager registers itself with this locator on enable.
-    ///
+    /// </summary>
+    /// <remarks>
     /// Usage:
     /// 1. Create a single WorldFlagLocator_SO asset in your project
     /// 2. Assign it to WorldFlagManager's "Locator" field
     /// 3. Reference the same asset in any SO that needs world flag access
-    /// </summary>
+    /// 4. Access functionality via locator.Manager.MethodName()
+    /// </remarks>
     [CreateAssetMenu(fileName = "WorldFlagLocator", menuName = "HelloDev/Locators/World Flag Locator")]
     public class WorldFlagLocator_SO : LocatorBase_SO
     {
-        #region LocatorBase_SO Implementation
+        #region Private Fields
 
-        /// <inheritdoc/>
-        public override string LocatorId => "HelloDev.Conditions.WorldFlags";
+        private WorldFlagManager _manager;
+
+        #endregion
+
+        #region LocatorBase_SO Implementation
 
         /// <inheritdoc/>
         public override bool IsAvailable => _manager != null;
@@ -34,15 +38,8 @@ namespace HelloDev.Conditions.WorldFlags
         /// <inheritdoc/>
         public override void PrepareForBootstrap()
         {
-            // Manager will re-register during bootstrap
             _manager = null;
         }
-
-        #endregion
-
-        #region Private Fields
-
-        private WorldFlagManager _manager;
 
         #endregion
 
@@ -52,17 +49,6 @@ namespace HelloDev.Conditions.WorldFlags
         /// Gets the registered manager instance.
         /// </summary>
         public WorldFlagManager Manager => _manager;
-
-        /// <summary>
-        /// Gets the count of registered flags.
-        /// </summary>
-        public int FlagCount => _manager?.FlagCount ?? 0;
-
-        /// <summary>
-        /// Gets all registered runtime flags.
-        /// </summary>
-        public IReadOnlyCollection<WorldFlagRuntime> AllFlags =>
-            _manager?.AllFlags ?? (IReadOnlyCollection<WorldFlagRuntime>)System.Array.Empty<WorldFlagRuntime>();
 
         #endregion
 
@@ -116,144 +102,6 @@ namespace HelloDev.Conditions.WorldFlags
 
         #endregion
 
-        #region Flag Registration
-
-        /// <summary>
-        /// Registers a flag data asset and creates its runtime instance.
-        /// </summary>
-        public WorldFlagRuntime RegisterFlag(WorldFlagBase_SO flagData)
-        {
-            return _manager?.RegisterFlag(flagData);
-        }
-
-        /// <summary>
-        /// Sets the flag registry and registers all contained flags.
-        /// </summary>
-        public void SetFlagRegistry(WorldFlagRegistry_SO registry)
-        {
-            _manager?.SetFlagRegistry(registry);
-        }
-
-        #endregion
-
-        #region Flag Access
-
-        /// <summary>
-        /// Gets a flag runtime by its data asset.
-        /// </summary>
-        public WorldFlagRuntime GetFlag(WorldFlagBase_SO flagData)
-        {
-            return _manager?.GetFlag(flagData);
-        }
-
-        /// <summary>
-        /// Gets a flag runtime by its ID.
-        /// </summary>
-        public WorldFlagRuntime GetFlagById(string flagId)
-        {
-            return _manager?.GetFlagById(flagId);
-        }
-
-        /// <summary>
-        /// Gets a bool flag runtime by its data asset.
-        /// </summary>
-        public WorldFlagBoolRuntime GetBoolFlag(WorldFlagBool_SO flagData)
-        {
-            return _manager?.GetBoolFlag(flagData);
-        }
-
-        /// <summary>
-        /// Gets an int flag runtime by its data asset.
-        /// </summary>
-        public WorldFlagIntRuntime GetIntFlag(WorldFlagInt_SO flagData)
-        {
-            return _manager?.GetIntFlag(flagData);
-        }
-
-        /// <summary>
-        /// Tries to get a bool flag value.
-        /// </summary>
-        public bool TryGetBoolValue(WorldFlagBool_SO flagData, out bool value)
-        {
-            if (_manager != null)
-            {
-                return _manager.TryGetBoolValue(flagData, out value);
-            }
-            value = default;
-            return false;
-        }
-
-        /// <summary>
-        /// Tries to get an int flag value.
-        /// </summary>
-        public bool TryGetIntValue(WorldFlagInt_SO flagData, out int value)
-        {
-            if (_manager != null)
-            {
-                return _manager.TryGetIntValue(flagData, out value);
-            }
-            value = default;
-            return false;
-        }
-
-        #endregion
-
-        #region Flag Modification
-
-        /// <summary>
-        /// Sets a bool flag value.
-        /// </summary>
-        public bool SetBoolValue(WorldFlagBool_SO flagData, bool value)
-        {
-            return _manager?.SetBoolValue(flagData, value) ?? false;
-        }
-
-        /// <summary>
-        /// Sets an int flag value.
-        /// </summary>
-        public bool SetIntValue(WorldFlagInt_SO flagData, int value)
-        {
-            return _manager?.SetIntValue(flagData, value) ?? false;
-        }
-
-        /// <summary>
-        /// Increments an int flag value.
-        /// </summary>
-        public bool IncrementIntValue(WorldFlagInt_SO flagData, int amount = 1)
-        {
-            return _manager?.IncrementIntValue(flagData, amount) ?? false;
-        }
-
-        /// <summary>
-        /// Decrements an int flag value.
-        /// </summary>
-        public bool DecrementIntValue(WorldFlagInt_SO flagData, int amount = 1)
-        {
-            return _manager?.DecrementIntValue(flagData, amount) ?? false;
-        }
-
-        #endregion
-
-        #region Reset
-
-        /// <summary>
-        /// Resets all flags to their default values.
-        /// </summary>
-        public void ResetAllFlags()
-        {
-            _manager?.ResetAllFlags();
-        }
-
-        /// <summary>
-        /// Resets a specific flag to its default value.
-        /// </summary>
-        public bool ResetFlag(WorldFlagBase_SO flagData)
-        {
-            return _manager?.ResetFlag(flagData) ?? false;
-        }
-
-        #endregion
-
         #region Debug
 
 #if ODIN_INSPECTOR && UNITY_EDITOR
@@ -268,7 +116,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         [ShowInInspector, ReadOnly]
         [PropertyOrder(102)]
-        private int RegisteredFlagCount => FlagCount;
+        private int RegisteredFlagCount => _manager?.FlagCount ?? 0;
 #endif
 
         #endregion

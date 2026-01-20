@@ -73,7 +73,7 @@ namespace HelloDev.Conditions.WorldFlags
                 if (!Application.isPlaying || debugLocator == null || !debugLocator.IsAvailable)
                     return "(Not in play mode)";
 
-                var runtime = debugLocator.GetBoolFlag(this);
+                var runtime = debugLocator.Manager.GetBoolFlag(this);
                 return runtime != null ? runtime.Value.ToString() : "(Not registered)";
             }
         }
@@ -85,7 +85,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugSetTrue()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.SetBoolValue(this, true);
+                debugLocator.Manager.SetBoolValue(this, true);
         }
 
         [BoxGroup("Debug")]
@@ -95,7 +95,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugSetFalse()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.SetBoolValue(this, false);
+                debugLocator.Manager.SetBoolValue(this, false);
         }
 
         [BoxGroup("Debug")]
@@ -105,7 +105,7 @@ namespace HelloDev.Conditions.WorldFlags
         private void DebugReset()
         {
             if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.ResetFlag(this);
+                debugLocator.Manager.ResetFlag(this);
         }
 
         #endregion

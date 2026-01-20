@@ -99,7 +99,7 @@ namespace HelloDev.Conditions.WorldFlags
         {
             if (flagLocator != null && flagLocator.IsAvailable)
             {
-                flagLocator.ResetAllFlags();
+                flagLocator.Manager.ResetAllFlags();
             }
             else
             {
@@ -189,7 +189,7 @@ namespace HelloDev.Conditions.WorldFlags
             {
                 if (flag == null) continue;
 
-                var runtime = debugLocator.GetFlag(flag);
+                var runtime = debugLocator.Manager.GetFlag(flag);
                 string value = runtime?.GetValueAsString() ?? "(not registered)";
                 Logger.Log(LogSystems.WorldFlags, $"  [{flag.GetType().Name}] {flag.FlagName}: {value}");
             }

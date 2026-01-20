@@ -183,9 +183,10 @@ namespace HelloDev.Conditions.WorldFlags
                 return;
             }
 
+            var manager = flagLocator.Manager;
             if (isBoolFlag)
             {
-                flagLocator.SetBoolValue(boolFlag, boolValue);
+                manager.SetBoolValue(boolFlag, boolValue);
                 Logger.LogVerbose(LogSystems.WorldFlags, $"Set {boolFlag.FlagName} = {boolValue}");
             }
             else
@@ -193,17 +194,17 @@ namespace HelloDev.Conditions.WorldFlags
                 switch (intOperation)
                 {
                     case WorldFlagIntOperation.Set:
-                        flagLocator.SetIntValue(intFlag, intValue);
+                        manager.SetIntValue(intFlag, intValue);
                         Logger.LogVerbose(LogSystems.WorldFlags, $"Set {intFlag.FlagName} = {intValue}");
                         break;
                     case WorldFlagIntOperation.Add:
-                        flagLocator.IncrementIntValue(intFlag, intValue);
-                        var addRuntime = flagLocator.GetIntFlag(intFlag);
+                        manager.IncrementIntValue(intFlag, intValue);
+                        var addRuntime = manager.GetIntFlag(intFlag);
                         Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} += {intValue} (now {addRuntime?.Value})");
                         break;
                     case WorldFlagIntOperation.Subtract:
-                        flagLocator.DecrementIntValue(intFlag, intValue);
-                        var subRuntime = flagLocator.GetIntFlag(intFlag);
+                        manager.DecrementIntValue(intFlag, intValue);
+                        var subRuntime = manager.GetIntFlag(intFlag);
                         Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} -= {intValue} (now {subRuntime?.Value})");
                         break;
                 }
