@@ -12,15 +12,8 @@ namespace HelloDev.Conditions.WorldFlags
     /// Registry of all WorldFlags in the game. Use this for save/load auto-discovery.
     /// Create one instance and populate it with all your WorldFlag assets.
     ///
-    /// Usage with QuestSaveManager:
-    /// <code>
-    /// [SerializeField] private WorldFlagRegistry_SO worldFlagRegistry;
-    ///
-    /// void Start()
-    /// {
-    ///     QuestSaveManager.Instance.SetWorldFlagRegistry(worldFlagRegistry);
-    /// }
-    /// </code>
+    /// Usage: Assign this registry to QuestManager's "World Flag Registry Asset" field in the inspector.
+    /// The QuestSnapshotProvider will automatically include all flags from this registry in save/load operations.
     /// </summary>
     [CreateAssetMenu(fileName = "WorldFlagRegistry", menuName = "HelloDev/Conditions/World Flag Registry")]
     public class WorldFlagRegistry_SO : ScriptableObject
