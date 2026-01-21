@@ -186,26 +186,31 @@ namespace HelloDev.Conditions.WorldFlags
             var manager = flagLocator.Manager;
             if (isBoolFlag)
             {
-                manager.SetBoolValue(boolFlag, boolValue);
+                manager.GetBoolFlag(boolFlag)?.SetValue(boolValue);
                 Logger.LogVerbose(LogSystems.WorldFlags, $"Set {boolFlag.FlagName} = {boolValue}");
             }
             else
             {
+                var intRuntime = manager.GetIntFlag(intFlag);
+                if (intRuntime == null)
+                {
+                    Logger.LogWarning(LogSystems.WorldFlags, $"Int flag '{intFlag?.FlagName}' not registered.");
+                    return;
+                }
+
                 switch (intOperation)
                 {
                     case WorldFlagIntOperation.Set:
-                        manager.SetIntValue(intFlag, intValue);
+                        intRuntime.SetValue(intValue);
                         Logger.LogVerbose(LogSystems.WorldFlags, $"Set {intFlag.FlagName} = {intValue}");
                         break;
                     case WorldFlagIntOperation.Add:
-                        manager.IncrementIntValue(intFlag, intValue);
-                        var addRuntime = manager.GetIntFlag(intFlag);
-                        Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} += {intValue} (now {addRuntime?.Value})");
+                        intRuntime.Increment(intValue);
+                        Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} += {intValue} (now {intRuntime.Value})");
                         break;
                     case WorldFlagIntOperation.Subtract:
-                        manager.DecrementIntValue(intFlag, intValue);
-                        var subRuntime = manager.GetIntFlag(intFlag);
-                        Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} -= {intValue} (now {subRuntime?.Value})");
+                        intRuntime.Decrement(intValue);
+                        Logger.LogVerbose(LogSystems.WorldFlags, $"{intFlag.FlagName} -= {intValue} (now {intRuntime.Value})");
                         break;
                 }
             }

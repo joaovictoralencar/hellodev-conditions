@@ -1,6 +1,6 @@
 {
     "name": "com.hellodev.conditions",
-    "version": "1.4.0",
+    "version": "1.6.0",
     "displayName": "HelloDev Conditions",
     "description": "A modular condition system for Unity games. Supports event-driven conditions, composite conditions, and self-contained world state flags for implementing prerequisites, triggers, and game logic.",
     "unity": "6000.3",
@@ -19,7 +19,8 @@
     },
     "dependencies": {
         "com.hellodev.utils": "1.1.0",
-        "com.hellodev.events": "1.1.0"
+        "com.hellodev.events": "1.1.0",
+        "com.hellodev.ids": "1.1.0"
     },
     "type": "library"
 }

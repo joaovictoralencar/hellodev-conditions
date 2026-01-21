@@ -8,12 +8,21 @@ namespace HelloDev.Conditions.WorldFlags
     /// <summary>
     /// Immutable configuration for a boolean world flag.
     /// Use WorldFlagManager (via WorldFlagLocator_SO) to get the runtime instance for mutable state.
-    ///
-    /// Example uses:
-    /// - Quest branch decisions ("spared_the_merchant", "joined_thieves_guild")
-    /// - Story milestones ("dragon_defeated", "met_king")
-    /// - Player choices ("chose_evil_path", "accepted_quest")
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Example uses:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Quest branch decisions ("spared_the_merchant", "joined_thieves_guild")</description></item>
+    /// <item><description>Story milestones ("dragon_defeated", "met_king")</description></item>
+    /// <item><description>Player choices ("chose_evil_path", "accepted_quest")</description></item>
+    /// </list>
+    /// <para>
+    /// Debug operations for flags are centralized in WorldFlagRegistry_SO to avoid
+    /// redundant locator references on each individual flag asset.
+    /// </para>
+    /// </remarks>
     [CreateAssetMenu(fileName = "WorldFlagBool", menuName = "HelloDev/World State/Bool Flag")]
     public class WorldFlagBool_SO : WorldFlagBase_SO
     {
@@ -26,14 +35,6 @@ namespace HelloDev.Conditions.WorldFlags
         [SerializeField]
         [Tooltip("The default value when the flag is reset.")]
         private bool defaultValue = false;
-
-#if ODIN_INSPECTOR && UNITY_EDITOR
-        [BoxGroup("Debug Locator")]
-        [PropertyOrder(99)]
-        [Tooltip("Reference for debug buttons only. Not required for normal operation.")]
-#endif
-        [SerializeField]
-        private WorldFlagLocator_SO debugLocator;
 
         #endregion
 
@@ -50,7 +51,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         /// <summary>
         /// Creates a new runtime instance for this flag.
-        /// Prefer using WorldFlagLocator_SO.GetBoolFlag() instead of calling this directly.
+        /// Prefer using WorldFlagLocator_SO.Manager.GetBoolFlag() instead of calling this directly.
         /// </summary>
         /// <returns>A new runtime instance.</returns>
         public WorldFlagBoolRuntime CreateRuntime()
@@ -59,56 +60,5 @@ namespace HelloDev.Conditions.WorldFlags
         }
 
         #endregion
-
-#if ODIN_INSPECTOR && UNITY_EDITOR
-        #region Debug
-
-        [BoxGroup("Debug")]
-        [ShowInInspector, ReadOnly]
-        [PropertyOrder(100)]
-        private string RuntimeValue
-        {
-            get
-            {
-                if (!Application.isPlaying || debugLocator == null || !debugLocator.IsAvailable)
-                    return "(Not in play mode)";
-
-                var runtime = debugLocator.Manager.GetBoolFlag(this);
-                return runtime != null ? runtime.Value.ToString() : "(Not registered)";
-            }
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Set True (Runtime)")]
-        [PropertyOrder(101)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugSetTrue()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.SetBoolValue(this, true);
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Set False (Runtime)")]
-        [PropertyOrder(102)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugService != null")]
-        private void DebugSetFalse()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.SetBoolValue(this, false);
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Reset to Default (Runtime)")]
-        [PropertyOrder(103)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugReset()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.ResetFlag(this);
-        }
-
-        #endregion
-#endif
     }
 }

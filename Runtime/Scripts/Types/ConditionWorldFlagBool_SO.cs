@@ -185,7 +185,7 @@ namespace HelloDev.Conditions.Types
 
             if (flagLocator != null && flagLocator.IsAvailable)
             {
-                flagLocator.Manager.SetBoolValue(worldFlag, expectedValue);
+                flagLocator.Manager.GetBoolFlag(worldFlag)?.SetValue(expectedValue);
             }
         }
 

@@ -11,10 +11,17 @@ namespace HelloDev.Conditions.WorldFlags
     /// <summary>
     /// Registry of all WorldFlags in the game. Use this for save/load auto-discovery.
     /// Create one instance and populate it with all your WorldFlag assets.
-    ///
-    /// Usage: Assign this registry to QuestManager's "World Flag Registry Asset" field in the inspector.
-    /// The QuestSnapshotProvider will automatically include all flags from this registry in save/load operations.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Usage: Assign this registry to WorldFlagManagerBehaviour's "Registry" field in the inspector.
+    /// The manager will automatically register all flags from this registry.
+    /// </para>
+    /// <para>
+    /// Debug operations for all flags are centralized here to avoid redundant
+    /// locator references on each individual flag asset.
+    /// </para>
+    /// </remarks>
     [CreateAssetMenu(fileName = "WorldFlagRegistry", menuName = "HelloDev/Conditions/World Flag Registry")]
     public class WorldFlagRegistry_SO : ScriptableObject
     {
@@ -169,13 +176,18 @@ namespace HelloDev.Conditions.WorldFlags
             }
         }
 
-        [Title("Debug Locator")]
+        [Title("Runtime Debug")]
         [InfoBox("Assign a WorldFlagLocator_SO to use runtime debug features.")]
         [SerializeField]
         private WorldFlagLocator_SO debugLocator;
 
-        [Button("Log All Flag Values (Runtime)")]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
+        [ShowInInspector, ReadOnly]
+        [ShowIf("@debugLocator != null")]
+        [PropertyOrder(50)]
+        private bool ManagerAvailable => debugLocator != null && debugLocator.IsAvailable;
+
+        [Button("Log All Flag Values")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null && debugLocator.IsAvailable")]
         private void LogAllFlagValues()
         {
             if (debugLocator == null || !debugLocator.IsAvailable)
@@ -192,6 +204,130 @@ namespace HelloDev.Conditions.WorldFlags
                 var runtime = debugLocator.Manager.GetFlag(flag);
                 string value = runtime?.GetValueAsString() ?? "(not registered)";
                 Logger.Log(LogSystems.WorldFlags, $"  [{flag.GetType().Name}] {flag.FlagName}: {value}");
+            }
+        }
+
+        [Button("Reset All Flags to Defaults")]
+        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null && debugLocator.IsAvailable")]
+        [GUIColor(0.8f, 0.6f, 0.4f)]
+        private void ResetAllFlagsToDefaults()
+        {
+            if (debugLocator == null || !debugLocator.IsAvailable)
+            {
+                Logger.LogWarning(LogSystems.WorldFlags, "WorldFlagLocator not available.");
+                return;
+            }
+
+            debugLocator.Manager.ResetAllFlags();
+            Logger.Log(LogSystems.WorldFlags, "All flags reset to defaults.");
+        }
+
+        [Title("Individual Flag Debug")]
+        [InfoBox("Select a flag to modify its value at runtime.")]
+        [SerializeField]
+        [ValueDropdown(nameof(GetFlagDropdown))]
+        [ShowIf("@UnityEngine.Application.isPlaying && debugLocator != null && debugLocator.IsAvailable")]
+        private WorldFlagBase_SO selectedFlag;
+
+        private IEnumerable<ValueDropdownItem<WorldFlagBase_SO>> GetFlagDropdown()
+        {
+            yield return new ValueDropdownItem<WorldFlagBase_SO>("(None)", null);
+            foreach (var flag in worldFlags)
+            {
+                if (flag != null)
+                {
+                    yield return new ValueDropdownItem<WorldFlagBase_SO>(flag.FlagName, flag);
+                }
+            }
+        }
+
+        [ShowInInspector, ReadOnly]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag != null && debugLocator != null && debugLocator.IsAvailable")]
+        [PropertyOrder(60)]
+        private string SelectedFlagValue
+        {
+            get
+            {
+                if (selectedFlag == null || debugLocator == null || !debugLocator.IsAvailable)
+                    return "(none)";
+                var runtime = debugLocator.Manager.GetFlag(selectedFlag);
+                return runtime?.GetValueAsString() ?? "(not registered)";
+            }
+        }
+
+        [HorizontalGroup("BoolButtons")]
+        [Button("Set True")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag is WorldFlagBool_SO && debugLocator != null && debugLocator.IsAvailable")]
+        private void SetSelectedBoolTrue()
+        {
+            if (selectedFlag is WorldFlagBool_SO boolFlag && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.GetBoolFlag(boolFlag)?.SetValue(true);
+            }
+        }
+
+        [HorizontalGroup("BoolButtons")]
+        [Button("Set False")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag is WorldFlagBool_SO && debugLocator != null && debugLocator.IsAvailable")]
+        private void SetSelectedBoolFalse()
+        {
+            if (selectedFlag is WorldFlagBool_SO boolFlag && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.GetBoolFlag(boolFlag)?.SetValue(false);
+            }
+        }
+
+        [HorizontalGroup("IntButtons")]
+        [Button("Increment")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag is WorldFlagInt_SO && debugLocator != null && debugLocator.IsAvailable")]
+        private void IncrementSelectedInt()
+        {
+            if (selectedFlag is WorldFlagInt_SO intFlag && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.GetIntFlag(intFlag)?.Increment();
+            }
+        }
+
+        [HorizontalGroup("IntButtons")]
+        [Button("Decrement")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag is WorldFlagInt_SO && debugLocator != null && debugLocator.IsAvailable")]
+        private void DecrementSelectedInt()
+        {
+            if (selectedFlag is WorldFlagInt_SO intFlag && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.GetIntFlag(intFlag)?.Decrement();
+            }
+        }
+
+        [HorizontalGroup("IntButtons")]
+        [Button("Set to Max")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag is WorldFlagInt_SO && debugLocator != null && debugLocator.IsAvailable")]
+        private void SetSelectedIntToMax()
+        {
+            if (selectedFlag is WorldFlagInt_SO intFlag && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.GetIntFlag(intFlag)?.SetValue(intFlag.MaxValue);
+            }
+        }
+
+        [HorizontalGroup("IntButtons")]
+        [Button("Set to Min")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag is WorldFlagInt_SO && debugLocator != null && debugLocator.IsAvailable")]
+        private void SetSelectedIntToMin()
+        {
+            if (selectedFlag is WorldFlagInt_SO intFlag && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.GetIntFlag(intFlag)?.SetValue(intFlag.MinValue);
+            }
+        }
+
+        [Button("Reset Selected Flag")]
+        [ShowIf("@UnityEngine.Application.isPlaying && selectedFlag != null && debugLocator != null && debugLocator.IsAvailable")]
+        private void ResetSelectedFlag()
+        {
+            if (selectedFlag != null && debugLocator?.IsAvailable == true)
+            {
+                debugLocator.Manager.ResetFlag(selectedFlag);
             }
         }
 #endif

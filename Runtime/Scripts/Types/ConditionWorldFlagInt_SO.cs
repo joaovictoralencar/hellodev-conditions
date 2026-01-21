@@ -223,7 +223,7 @@ namespace HelloDev.Conditions.Types
                 _ => targetValue
             };
 
-            flagLocator.Manager.SetIntValue(worldFlag, valueToSet);
+            flagLocator.Manager.GetIntFlag(worldFlag)?.SetValue(valueToSet);
         }
 
         #endregion

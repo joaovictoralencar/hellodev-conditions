@@ -12,14 +12,25 @@ namespace HelloDev.Conditions.WorldFlags
     /// <summary>
     /// ScriptableObject locator for WorldFlagManager.
     /// Acts as a decoupled access point that any asset can reference.
-    /// The WorldFlagManager registers itself with this locator on enable.
+    /// The WorldFlagManagerBehaviour registers its manager with this locator on enable.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Usage:
-    /// 1. Create a single WorldFlagLocator_SO asset in your project
-    /// 2. Assign it to WorldFlagManager's "Locator" field
-    /// 3. Reference the same asset in any SO that needs world flag access
-    /// 4. Access functionality via locator.Manager.MethodName()
+    /// </para>
+    /// <list type="number">
+    /// <item><description>Create a single WorldFlagLocator_SO asset in your project</description></item>
+    /// <item><description>Assign it to WorldFlagManagerBehaviour's "Locator" field</description></item>
+    /// <item><description>Reference the same asset in any SO that needs world flag access</description></item>
+    /// <item><description>Access functionality via locator.Manager.MethodName()</description></item>
+    /// </list>
+    /// <para>
+    /// To modify flag values, use the typed getters and call methods on the runtime:
+    /// </para>
+    /// <code>
+    /// locator.Manager.GetBoolFlag(flagData)?.SetValue(true);
+    /// locator.Manager.GetIntFlag(flagData)?.Increment(10);
+    /// </code>
     /// </remarks>
     [CreateAssetMenu(fileName = "WorldFlagLocator", menuName = "HelloDev/Locators/World Flag Locator")]
     public class WorldFlagLocator_SO : LocatorBase_SO
@@ -33,7 +44,7 @@ namespace HelloDev.Conditions.WorldFlags
         #region LocatorBase_SO Implementation
 
         /// <inheritdoc/>
-        public override bool IsAvailable => _manager != null;
+        public override bool IsAvailable => _manager != null && _manager.IsInitialized;
 
         /// <inheritdoc/>
         public override void PrepareForBootstrap()
@@ -72,7 +83,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         /// <summary>
         /// Registers a WorldFlagManager with this locator.
-        /// Called by WorldFlagManager.OnEnable().
+        /// Called by WorldFlagManagerBehaviour.InitializeAsync().
         /// </summary>
         public void Register(WorldFlagManager manager)
         {
@@ -80,7 +91,7 @@ namespace HelloDev.Conditions.WorldFlags
 
             if (_manager != null && _manager != manager)
             {
-                Logger.LogWarning(LogSystems.WorldFlags, $"Replacing existing manager. Old: {_manager.name}, New: {manager.name}");
+                Logger.LogWarning(LogSystems.WorldFlags, "Replacing existing manager.");
             }
 
             _manager = manager;
@@ -89,7 +100,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         /// <summary>
         /// Unregisters a WorldFlagManager from this locator.
-        /// Called by WorldFlagManager.OnDisable().
+        /// Called by WorldFlagManagerBehaviour.Shutdown().
         /// </summary>
         public void Unregister(WorldFlagManager manager)
         {
@@ -112,10 +123,6 @@ namespace HelloDev.Conditions.WorldFlags
 
         [ShowInInspector, ReadOnly]
         [PropertyOrder(101)]
-        private string ManagerName => _manager != null ? _manager.name : "(none)";
-
-        [ShowInInspector, ReadOnly]
-        [PropertyOrder(102)]
         private int RegisteredFlagCount => _manager?.FlagCount ?? 0;
 #endif
 

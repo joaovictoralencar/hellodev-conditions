@@ -8,13 +8,22 @@ namespace HelloDev.Conditions.WorldFlags
     /// <summary>
     /// Immutable configuration for an integer world flag.
     /// Use WorldFlagManager (via WorldFlagLocator_SO) to get the runtime instance for mutable state.
-    ///
-    /// Example uses:
-    /// - Reputation values ("merchant_reputation", "thieves_guild_standing")
-    /// - Kill counts ("dragons_slain", "bandits_defeated")
-    /// - Resource tracking ("village_population", "gold_donated")
-    /// - Quest counters ("quests_completed", "artifacts_found")
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Example uses:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Reputation values ("merchant_reputation", "thieves_guild_standing")</description></item>
+    /// <item><description>Kill counts ("dragons_slain", "bandits_defeated")</description></item>
+    /// <item><description>Resource tracking ("village_population", "gold_donated")</description></item>
+    /// <item><description>Quest counters ("quests_completed", "artifacts_found")</description></item>
+    /// </list>
+    /// <para>
+    /// Debug operations for flags are centralized in WorldFlagRegistry_SO to avoid
+    /// redundant locator references on each individual flag asset.
+    /// </para>
+    /// </remarks>
     [CreateAssetMenu(fileName = "WorldFlagInt", menuName = "HelloDev/World State/Int Flag")]
     public class WorldFlagInt_SO : WorldFlagBase_SO
     {
@@ -44,14 +53,6 @@ namespace HelloDev.Conditions.WorldFlags
         [Tooltip("Maximum allowed value (inclusive). Set to int.MaxValue for no maximum.")]
         private int maxValue = int.MaxValue;
 
-#if ODIN_INSPECTOR && UNITY_EDITOR
-        [BoxGroup("Debug Locator")]
-        [PropertyOrder(99)]
-        [Tooltip("Reference for debug buttons only. Not required for normal operation.")]
-#endif
-        [SerializeField]
-        private WorldFlagLocator_SO debugLocator;
-
         #endregion
 
         #region Properties
@@ -77,7 +78,7 @@ namespace HelloDev.Conditions.WorldFlags
 
         /// <summary>
         /// Creates a new runtime instance for this flag.
-        /// Prefer using WorldFlagLocator_SO.GetIntFlag() instead of calling this directly.
+        /// Prefer using WorldFlagLocator_SO.Manager.GetIntFlag() instead of calling this directly.
         /// </summary>
         /// <returns>A new runtime instance.</returns>
         public WorldFlagIntRuntime CreateRuntime()
@@ -86,76 +87,5 @@ namespace HelloDev.Conditions.WorldFlags
         }
 
         #endregion
-
-#if ODIN_INSPECTOR && UNITY_EDITOR
-        #region Debug
-
-        [BoxGroup("Debug")]
-        [ShowInInspector, ReadOnly]
-        [PropertyOrder(100)]
-        private string RuntimeValue
-        {
-            get
-            {
-                if (!Application.isPlaying || debugLocator == null || !debugLocator.IsAvailable)
-                    return "(Not in play mode)";
-
-                var runtime = debugLocator.Manager.GetIntFlag(this);
-                return runtime != null ? runtime.Value.ToString() : "(Not registered)";
-            }
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Increment (Runtime)")]
-        [PropertyOrder(101)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugIncrement()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.IncrementIntValue(this);
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Decrement (Runtime)")]
-        [PropertyOrder(102)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugDecrement()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.DecrementIntValue(this);
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Reset to Default (Runtime)")]
-        [PropertyOrder(103)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugReset()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.ResetFlag(this);
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Set to Max (Runtime)")]
-        [PropertyOrder(104)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugSetMax()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.SetIntValue(this, maxValue);
-        }
-
-        [BoxGroup("Debug")]
-        [Button("Set to Min (Runtime)")]
-        [PropertyOrder(105)]
-        [EnableIf("@UnityEngine.Application.isPlaying && debugLocator != null")]
-        private void DebugSetMin()
-        {
-            if (debugLocator != null && debugLocator.IsAvailable)
-                debugLocator.Manager.SetIntValue(this, minValue);
-        }
-
-        #endregion
-#endif
     }
 }

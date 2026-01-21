@@ -13,18 +13,33 @@ A modular condition system for Unity games. Supports event-driven conditions, co
 - **ComparisonType** - Equals, NotEquals, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual
 - **HasBeenEvaluated** - Check if an event-driven condition has been triggered
 
-### World State Flags (v1.2.0)
+### World State Flags (v1.5.0)
 
 Self-contained ScriptableObject flags for tracking persistent game state:
 
 - **WorldFlagBool_SO** - Boolean flags (met_king, chose_evil_path, dragon_defeated)
 - **WorldFlagInt_SO** - Integer flags with min/max (reputation, kill_count, gold_donated)
-- **WorldFlagManager** - Centralized manager for world flag runtime instances
+- **WorldFlagManager** - Pure C# manager for world flag runtime instances
+- **WorldFlagManagerBehaviour** - Thin MonoBehaviour wrapper for Unity lifecycle
 - **WorldFlagLocator_SO** - Locator ScriptableObject for decoupled access
-- **WorldFlagRegistry_SO** - Registry for managing all flags in one place
+- **WorldFlagRegistry_SO** - Centralized registry for all flags with debug UI
 - **WorldFlagModification** - Defines how to modify flags (Set, Add, Subtract)
 - **ConditionWorldFlagBool_SO** - Check boolean flag values
 - **ConditionWorldFlagInt_SO** - Check integer flags with comparisons (>=, <, ==, etc.)
+
+### Event-Driven Flag Modifiers (v1.6.0)
+
+Automatically modify world flags when game events fire:
+
+- **WorldFlagEventModifierBase_SO** - Abstract base for event-driven modifiers
+- **WorldFlagEventModifier_SO\<T\>** - Generic base with value filtering and comparison
+- **WorldFlagEventModifierVoid_SO** - For parameterless events (OnGameStart, OnPause)
+- **WorldFlagEventModifierID_SO** - For ID-based events (OnMonsterKilled, OnItemCollected)
+- **WorldFlagEventModifierInt_SO** - For integer events with comparisons
+- **WorldFlagEventModifierBool_SO** - For boolean events
+- **WorldFlagEventModifierFloat_SO** - For float events with comparisons
+- **WorldFlagEventModifierString_SO** - For string events
+- **WorldFlagEventModifierManager** - MonoBehaviour to manage modifier lifecycles
 
 ## Getting Started
 
@@ -88,11 +103,11 @@ public class NPCDialogue : MonoBehaviour
 
     public void OnMeetKing()
     {
-        // Access runtime flags through the manager
+        // Access runtime flags through the manager, then call methods on the runtime
         if (flagLocator.IsAvailable)
         {
-            flagLocator.Manager.SetBoolValue(hasMetKingData, true);
-            flagLocator.Manager.IncrementIntValue(reputationData, 10);
+            flagLocator.Manager.GetBoolFlag(hasMetKingData)?.SetValue(true);
+            flagLocator.Manager.GetIntFlag(reputationData)?.Increment(10);
         }
     }
 
@@ -100,21 +115,24 @@ public class NPCDialogue : MonoBehaviour
     {
         if (!flagLocator.IsAvailable) return false;
 
-        flagLocator.Manager.TryGetBoolValue(hasMetKingData, out bool metKing);
-        flagLocator.Manager.TryGetIntValue(reputationData, out int rep);
+        var metKingFlag = flagLocator.Manager.GetBoolFlag(hasMetKingData);
+        var repFlag = flagLocator.Manager.GetIntFlag(reputationData);
+
+        bool metKing = metKingFlag?.Value ?? false;
+        int rep = repFlag?.Value ?? 0;
         return metKing && rep >= 50;
     }
 }
 ```
 
-### 4. Set Up the World Flag Manager (Optional)
+### 4. Set Up the World Flag Manager
 
 For centralized flag management with events and runtime control:
 
 1. Create a **WorldFlagLocator_SO**: **Create > HelloDev > Locators > World Flag Locator**
-2. Create a **WorldFlagRegistry_SO**: **Create > HelloDev > World State > World Flag Registry**
-3. Add your flags to the registry
-4. Add a **WorldFlagManager** component to your scene
+2. Create a **WorldFlagRegistry_SO**: **Create > HelloDev > Conditions > World Flag Registry**
+3. Add your flags to the registry (or use "Find All WorldFlags in Project" button)
+4. Add a **WorldFlagManagerBehaviour** component to your scene
 5. Assign the locator and registry references
 
 ## Installation
@@ -222,13 +240,13 @@ public class QuestGiver : MonoBehaviour
 
     public void OnMeetKing()
     {
-        // Modify flags through the manager
-        flagLocator.Manager.SetBoolValue(metKingFlagData, true);
+        // Get the typed runtime, then call methods on it
+        flagLocator.Manager.GetBoolFlag(metKingFlagData)?.SetValue(true);
     }
 
     public void OnCompleteQuest()
     {
-        flagLocator.Manager.IncrementIntValue(reputationFlagData, 10);
+        flagLocator.Manager.GetIntFlag(reputationFlagData)?.Increment(10);
     }
 
     void Start()
@@ -238,16 +256,16 @@ public class QuestGiver : MonoBehaviour
         flagLocator.Manager.OnIntFlagChanged.AddListener(OnIntFlagChanged);
     }
 
-    void OnBoolFlagChanged(WorldFlagBool_SO flag, bool newValue)
+    void OnBoolFlagChanged(WorldFlagBoolRuntime runtime, bool newValue)
     {
-        if (flag == metKingFlagData && newValue)
+        if (runtime.Data == metKingFlagData && newValue)
             Debug.Log("Player met the king!");
     }
 
-    void OnIntFlagChanged(WorldFlagInt_SO flag, int newValue)
+    void OnIntFlagChanged(WorldFlagIntRuntime runtime, int newValue, int oldValue)
     {
-        if (flag == reputationFlagData)
-            Debug.Log($"Reputation changed to: {newValue}");
+        if (runtime.Data == reputationFlagData)
+            Debug.Log($"Reputation changed from {oldValue} to: {newValue}");
     }
 }
 ```
@@ -262,6 +280,9 @@ using HelloDev.Conditions.WorldFlags;
 public class GameController : MonoBehaviour
 {
     [SerializeField] private WorldFlagLocator_SO flagLocator;
+    [SerializeField] private WorldFlagBool_SO hasMetKingFlag;
+    [SerializeField] private WorldFlagInt_SO reputationFlag;
+    [SerializeField] private WorldFlagInt_SO killCountFlag;
 
     void Start()
     {
@@ -270,18 +291,23 @@ public class GameController : MonoBehaviour
         {
             var manager = flagLocator.Manager;
 
-            // Get flag values
-            if (manager.TryGetBoolValue(hasMetKingFlag, out bool value))
+            // Get typed runtimes
+            var metKingRuntime = manager.GetBoolFlag(hasMetKingFlag);
+            var reputationRuntime = manager.GetIntFlag(reputationFlag);
+            var killCountRuntime = manager.GetIntFlag(killCountFlag);
+
+            // Read values
+            if (metKingRuntime != null)
             {
-                Debug.Log($"Has met king: {value}");
+                Debug.Log($"Has met king: {metKingRuntime.Value}");
             }
 
             // Set flag values
-            manager.SetBoolValue(hasMetKingFlag, true);
-            manager.SetIntValue(reputationFlag, 50);
+            metKingRuntime?.SetValue(true);
+            reputationRuntime?.SetValue(50);
 
             // Increment/decrement int flags
-            manager.IncrementIntValue(killCountFlag, 1);
+            killCountRuntime?.Increment(1);
 
             // Subscribe to manager events
             manager.OnBoolFlagChanged.AddListener(HandleBoolFlagChanged);
@@ -318,11 +344,91 @@ Apply changes to world flags (used by quest system for branch consequences):
 using HelloDev.Conditions.WorldFlags;
 
 // Create modification in code
-var modification = WorldFlagModification.CreateBool(sparedMerchantFlag, true);
+var modification = WorldFlagModification.CreateBool(locator, sparedMerchantFlag, true);
 modification.Apply();
 
-var repBoost = WorldFlagModification.CreateInt(reputationFlag, WorldFlagIntOperation.Add, 10);
+var repBoost = WorldFlagModification.CreateInt(locator, reputationFlag, WorldFlagIntOperation.Add, 10);
 repBoost.Apply();
+```
+
+### Event-Driven Flag Modifiers
+
+Set world flags automatically when game events fire, independent of quest stage transitions.
+
+#### Creating Event Modifiers
+
+```
+Assets > Create > HelloDev > Conditions > World Flags > Event Modifier (Void)
+Assets > Create > HelloDev > Conditions > World Flags > Event Modifier (ID)
+Assets > Create > HelloDev > Conditions > World Flags > Event Modifier (Int)
+Assets > Create > HelloDev > Conditions > World Flags > Event Modifier (Bool)
+Assets > Create > HelloDev > Conditions > World Flags > Event Modifier (Float)
+Assets > Create > HelloDev > Conditions > World Flags > Event Modifier (String)
+```
+
+#### Use Cases
+
+- **ID events:** `OnMonsterKilled(GoblinChiefID)` → Set `boss_defeated` flag
+- **Void events:** `OnGameStart` → Reset flags to defaults
+- **Int events:** `OnScoreChanged(100)` → Set milestone flag when score >= 100
+- **Bool events:** `OnDoorOpened(true)` → Track door state
+
+#### Setting Up Event Modifiers
+
+1. Create a modifier: **Create > HelloDev > Conditions > World Flags > Event Modifier (ID)**
+2. Configure the modifier:
+   - Assign the **GameEvent** to listen to
+   - Set **Filter By Value** and **Target Value** (optional filtering)
+   - Set **Comparison Type** (Equals, GreaterThan, etc.)
+   - Configure the **Modification** (flag to set, value, operation)
+3. Add a **WorldFlagEventModifierManager** component to your scene
+4. Add the modifier(s) to the manager's list
+
+#### Example: Track Boss Kills
+
+```csharp
+// ScriptableObject assets needed:
+// - GameEventID_SO: OnMonsterKilled
+// - ID_SO: GoblinChiefID
+// - WorldFlagBool_SO: GoblinChiefDefeated
+// - WorldFlagEventModifierID_SO: configured with above references
+
+// In your Monster script:
+[SerializeField] private ID_SO monsterId;
+[SerializeField] private GameEvent_SO<ID_SO> onMonsterKilled;
+
+void OnDeath()
+{
+    onMonsterKilled.Raise(monsterId);
+    // The modifier automatically sets GoblinChiefDefeated = true
+    // when monsterId matches GoblinChiefID
+}
+```
+
+#### Example: Score Milestone Tracking
+
+```csharp
+// WorldFlagEventModifierInt_SO configured with:
+// - GameEvent: OnScoreChanged
+// - Filter By Value: true
+// - Target Value: 1000
+// - Comparison: GreaterThanOrEqual
+// - Modification: Set ReachedHighScore = true
+
+// When OnScoreChanged fires with value >= 1000,
+// the ReachedHighScore flag is automatically set
+```
+
+#### Managing Modifier Lifecycles
+
+The `WorldFlagEventModifierManager` handles subscription/unsubscription automatically:
+
+```csharp
+// Add to scene - modifiers subscribe on OnEnable, unsubscribe on OnDisable
+public class WorldFlagEventModifierManager : MonoBehaviour
+{
+    [SerializeField] private List<WorldFlagEventModifierBase_SO> modifiers;
+}
 ```
 
 ## API Reference
@@ -359,7 +465,7 @@ repBoost.Apply();
 | `DefaultValue` | Value when reset |
 | `FlagId` | Unique identifier |
 
-### WorldFlagBoolRuntime (accessed via Manager)
+### WorldFlagBoolRuntime (accessed via Manager.GetBoolFlag)
 | Member | Description |
 |--------|-------------|
 | `Value` | Current boolean value |
@@ -379,7 +485,7 @@ repBoost.Apply();
 | `MinValue` / `MaxValue` | Optional clamping bounds |
 | `FlagId` | Unique identifier |
 
-### WorldFlagIntRuntime (accessed via Manager)
+### WorldFlagIntRuntime (accessed via Manager.GetIntFlag)
 | Member | Description |
 |--------|-------------|
 | `Value` | Current integer value |
@@ -389,26 +495,37 @@ repBoost.Apply();
 | `ResetToDefault()` | Reset to default value |
 | `OnValueChanged` | Event fired when value changes |
 
-### WorldFlagManager
+### IWorldFlagManager (Interface)
+| Member | Description |
+|--------|-------------|
+| `IsInitialized` | Whether the manager is initialized |
+| `FlagCount` | Number of registered flags |
+| `AllFlags` | All registered runtime flags |
+| `GetFlag(flagData)` | Get any flag runtime by data |
+| `GetFlagById(flagId)` | Get any flag runtime by ID |
+| `GetBoolFlag(flagData)` | Get typed bool flag runtime |
+| `GetIntFlag(flagData)` | Get typed int flag runtime |
+| `RegisterFlag(flagData)` | Register a flag manually |
+| `ResetAllFlags()` | Reset all flags to defaults |
+| `ResetFlag(flagData)` | Reset specific flag to default |
+
+### WorldFlagManager (Pure C# Implementation)
+| Member | Description |
+|--------|-------------|
+| All `IWorldFlagManager` members | See interface above |
+| `TryGetBoolValue(flagData, out value)` | Try get bool flag value |
+| `TryGetIntValue(flagData, out value)` | Try get int flag value |
+| `OnBoolFlagChanged` | Event for bool flag changes |
+| `OnIntFlagChanged` | Event for int flag changes |
+| `OnFlagRegistered` | Event when flag is registered |
+
+### WorldFlagManagerBehaviour (MonoBehaviour Wrapper)
 | Member | Description |
 |--------|-------------|
 | `SelfInitialize` | If true, self-initializes in Unity lifecycle. Set false for bootstrap mode. |
 | `InitializationPriority` | Bootstrap priority (100 - Data Layer) |
+| `Manager` | The underlying WorldFlagManager instance |
 | `Locator` | The locator this manager is registered with |
-| `FlagCount` | Number of registered flags |
-| `AllFlags` | All registered runtime flags |
-| `GetBoolFlag(flagData)` | Get bool flag runtime instance |
-| `GetIntFlag(flagData)` | Get int flag runtime instance |
-| `TryGetBoolValue(flagData, out value)` | Try get bool flag value |
-| `TryGetIntValue(flagData, out value)` | Try get int flag value |
-| `SetBoolValue(flagData, value)` | Set bool flag value |
-| `SetIntValue(flagData, value)` | Set int flag value |
-| `IncrementIntValue(flagData, amount)` | Increment int flag |
-| `DecrementIntValue(flagData, amount)` | Decrement int flag |
-| `ResetAllFlags()` | Reset all flags to defaults |
-| `OnBoolFlagChanged` | Event for bool flag changes |
-| `OnIntFlagChanged` | Event for int flag changes |
-| `OnFlagRegistered` | Event when flag is registered |
 
 ### WorldFlagModification
 | Member | Description |
@@ -420,12 +537,103 @@ repBoost.Apply();
 | `CreateBool()` | Factory for boolean modification |
 | `CreateInt()` | Factory for integer modification |
 
+### WorldFlagEventModifierBase_SO (Abstract)
+| Member | Description |
+|--------|-------------|
+| `IsSubscribed` | Whether currently subscribed to event |
+| `Modification` | The WorldFlagModification to apply |
+| `IsValid` | Whether configuration is valid |
+| `Subscribe()` | Subscribe to the game event |
+| `Unsubscribe()` | Unsubscribe from the game event |
+
+### WorldFlagEventModifier_SO\<T\> (Generic Typed Base)
+| Member | Description |
+|--------|-------------|
+| `filterByValue` | If true, only trigger when value matches filter |
+| `targetValue` | Value to compare against |
+| `comparisonType` | How to compare (Equals, GreaterThan, etc.) |
+
+### WorldFlagEventModifierVoid_SO
+| Member | Description |
+|--------|-------------|
+| `gameEvent` | GameEventVoid_SO to listen to |
+
+### WorldFlagEventModifierID_SO
+| Member | Description |
+|--------|-------------|
+| `gameEvent` | GameEvent_SO\<ID_SO\> to listen to |
+
+### WorldFlagEventModifierInt_SO
+| Member | Description |
+|--------|-------------|
+| `gameEvent` | GameEventInt_SO to listen to |
+
+### WorldFlagEventModifierBool_SO
+| Member | Description |
+|--------|-------------|
+| `gameEvent` | GameEventBool_SO to listen to |
+
+### WorldFlagEventModifierFloat_SO
+| Member | Description |
+|--------|-------------|
+| `gameEvent` | GameEventFloat_SO to listen to |
+
+### WorldFlagEventModifierString_SO
+| Member | Description |
+|--------|-------------|
+| `gameEvent` | GameEventString_SO to listen to |
+
+### WorldFlagEventModifierManager
+| Member | Description |
+|--------|-------------|
+| `modifiers` | List of modifiers to manage |
+| OnEnable | Subscribes all modifiers |
+| OnDisable | Unsubscribes all modifiers |
+
 ## Dependencies
 
 - com.hellodev.utils (1.1.0+)
 - com.hellodev.events (1.1.0+)
+- com.hellodev.ids (1.1.0+) - Required for WorldFlagEventModifierID_SO
 
 ## Changelog
+
+### v1.6.0 (2026-01-21)
+**Event-Driven Flag Modifiers:**
+- Added `WorldFlagEventModifierBase_SO` - Abstract base for event-driven world flag modifiers
+- Added `WorldFlagEventModifier_SO<T>` - Generic typed base with value filtering and comparison support
+- Added `WorldFlagEventModifierVoid_SO` - For parameterless events (OnGameStart, OnPause)
+- Added `WorldFlagEventModifierID_SO` - For ID-based events (OnMonsterKilled, OnItemCollected)
+- Added `WorldFlagEventModifierInt_SO` - For integer events with full comparison operators
+- Added `WorldFlagEventModifierBool_SO` - For boolean events
+- Added `WorldFlagEventModifierFloat_SO` - For float events with approximate equality
+- Added `WorldFlagEventModifierString_SO` - For string events
+- Added `WorldFlagEventModifierManager` - MonoBehaviour to manage modifier subscription lifecycle
+
+**Dependencies:**
+- Added `com.hellodev.ids` dependency (required for ID-based event modifiers)
+
+
+### v1.5.0 (2026-01-20)
+**Architecture Refactor (Breaking):**
+- **Tip #1 (Interfaces):** Added `IWorldFlagManager` interface for testability and decoupling
+- **Tip #2 (Separate Logic from MonoBehaviors):** Split `WorldFlagManager` into:
+  - `WorldFlagManager` - Pure C# class with all logic (testable without Play mode)
+  - `WorldFlagManagerBehaviour` - Thin MonoBehaviour wrapper for Unity lifecycle
+- **Removed dual registration:** Use only `WorldFlagRegistry_SO`, removed manual `flagAssets` list
+- **Removed redundant debug locators:** Debug UI centralized in `WorldFlagRegistry_SO`
+- **API Change:** Type-specific operations moved to runtime classes
+  - Old: `manager.SetBoolValue(flag, true)`, `manager.IncrementIntValue(flag, 10)`
+  - New: `manager.GetBoolFlag(flag)?.SetValue(true)`, `manager.GetIntFlag(flag)?.Increment(10)`
+
+**Migration Guide:**
+1. Replace `WorldFlagManager` component with `WorldFlagManagerBehaviour`
+2. Move flags from `flagAssets` list to a `WorldFlagRegistry_SO`
+3. Update API calls:
+   - `manager.SetBoolValue(flag, val)` → `manager.GetBoolFlag(flag)?.SetValue(val)`
+   - `manager.SetIntValue(flag, val)` → `manager.GetIntFlag(flag)?.SetValue(val)`
+   - `manager.IncrementIntValue(flag, n)` → `manager.GetIntFlag(flag)?.Increment(n)`
+   - `manager.DecrementIntValue(flag, n)` → `manager.GetIntFlag(flag)?.Decrement(n)`
 
 ### v1.4.0 (2026-01-19)
 **Locator Simplification (Breaking):**
