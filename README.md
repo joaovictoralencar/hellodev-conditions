@@ -41,6 +41,18 @@ Automatically modify world flags when game events fire:
 - **WorldFlagEventModifierString_SO** - For string events
 - **WorldFlagEventModifierManager** - MonoBehaviour to manage modifier lifecycles
 
+## Assembly Structure
+
+The package is organized into three assemblies for modularity:
+
+| Assembly | Description | Dependencies |
+|----------|-------------|--------------|
+| `HelloDev.Conditions` | Core interfaces and base classes | Utils |
+| `HelloDev.Conditions.Types` | Typed conditions (Bool, Int, Float, String, WorldFlag) | Conditions, WorldFlags, Events |
+| `HelloDev.Conditions.WorldFlags` | World state flag system | Conditions, Events, IDs |
+
+This allows you to reference only what you need. For example, if you only need the core condition interface without world flags, reference only `HelloDev.Conditions`.
+
 ## Getting Started
 
 ### 1. Install the Package

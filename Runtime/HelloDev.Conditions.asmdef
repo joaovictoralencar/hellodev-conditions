@@ -3,7 +3,6 @@
     "rootNamespace": "HelloDev.Conditions",
     "references": [
         "HelloDev.Utils",
-        "HelloDev.Singletons",
         "HelloDev.Events",
         "HelloDev.IDs"
     ],

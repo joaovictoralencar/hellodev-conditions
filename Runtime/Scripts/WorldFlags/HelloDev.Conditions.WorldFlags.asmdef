@@ -1,10 +1,10 @@
 {
-    "name": "HelloDev.Conditions.Types",
-    "rootNamespace": "HelloDev.Conditions.Types",
+    "name": "HelloDev.Conditions.WorldFlags",
+    "rootNamespace": "HelloDev.Conditions.WorldFlags",
     "references": [
         "HelloDev.Conditions",
-        "HelloDev.Conditions.WorldFlags",
         "HelloDev.Events",
+        "HelloDev.IDs",
         "HelloDev.Utils"
     ],
     "includePlatforms": [],
