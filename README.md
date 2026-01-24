@@ -536,6 +536,7 @@ public class WorldFlagEventModifierManager : MonoBehaviour
 |--------|-------------|
 | `SelfInitialize` | If true, self-initializes in Unity lifecycle. Set false for bootstrap mode. |
 | `InitializationPriority` | Bootstrap priority (100 - Data Layer) |
+| `ReceiveContext(GameContext)` | Called by bootstrap to provide service container for registration |
 | `Manager` | The underlying WorldFlagManager instance |
 | `Locator` | The locator this manager is registered with |
 
@@ -604,7 +605,7 @@ public class WorldFlagEventModifierManager : MonoBehaviour
 
 ## Dependencies
 
-- com.hellodev.utils (1.1.0+)
+- com.hellodev.utils (1.5.0+) - Includes GameContext for bootstrap integration
 - com.hellodev.events (1.1.0+)
 - com.hellodev.ids (1.1.0+) - Required for WorldFlagEventModifierID_SO
 

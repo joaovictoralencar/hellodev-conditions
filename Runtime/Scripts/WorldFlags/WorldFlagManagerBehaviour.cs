@@ -72,6 +72,7 @@ namespace HelloDev.Conditions.WorldFlags
         #region Runtime State
 
         private WorldFlagManager _manager;
+        private GameContext _context;
 
         #endregion
 
@@ -90,19 +91,14 @@ namespace HelloDev.Conditions.WorldFlags
         /// <inheritdoc />
         public bool IsInitialized => _manager?.IsInitialized ?? false;
 
-        #endregion
-
-        #region Properties
-
         /// <summary>
-        /// Gets the underlying WorldFlagManager instance.
+        /// Receives the game context from GameBootstrap.
         /// </summary>
-        public WorldFlagManager Manager => _manager;
-
-        /// <summary>
-        /// Gets the locator this manager is registered with.
-        /// </summary>
-        public WorldFlagLocator_SO Locator => locator;
+        /// <param name="context">The game context for service registration.</param>
+        public void ReceiveContext(GameContext context)
+        {
+            _context = context;
+        }
 
         #endregion
 
@@ -149,7 +145,7 @@ namespace HelloDev.Conditions.WorldFlags
             // Initialize the manager with flags from the registry
             _manager.Initialize(flagRegistry);
 
-            // Register with locator
+            // Register with locator (for SO access)
             if (locator != null)
             {
                 locator.Register(_manager);
@@ -158,6 +154,9 @@ namespace HelloDev.Conditions.WorldFlags
             {
                 Logger.LogWarning(LogSystems.WorldFlags, $"No locator assigned on {name}. Flags will not be accessible via locator.");
             }
+
+            // Self-register to context
+            _context?.Register<IWorldFlagManager>(_manager);
 
             return Task.CompletedTask;
         }
@@ -174,17 +173,10 @@ namespace HelloDev.Conditions.WorldFlags
                 locator.Unregister(_manager);
             }
 
-            _manager.Shutdown();
-        }
+            // Unregister from context
+            _context?.Unregister<IWorldFlagManager>();
 
-        /// <summary>
-        /// Sets the flag registry and registers all contained flags.
-        /// </summary>
-        /// <param name="registry">The registry to use.</param>
-        public void SetFlagRegistry(WorldFlagRegistry_SO registry)
-        {
-            flagRegistry = registry;
-            _manager?.SetFlagRegistry(registry);
+            _manager.Shutdown();
         }
 
         #endregion
